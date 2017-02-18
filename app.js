@@ -1,14 +1,15 @@
 const {app, BrowserWindow} = require("electron")
 const path = require("path")
 
-let main
+let mainWindow
 app.on("ready",function(){
-    main = new BrowserWindow({
+    global.mainWindow = mainWindow = new BrowserWindow({
         width: 640,
         height: 480,
         resizable: false,
         useContentSize: true,
     })
     
-    main.loadURL(path.join(__dirname, "index.html"))
+    mainWindow.loadURL(path.join(__dirname, "index.html"))
+    //mainWindow.setMenu()
 })
