@@ -1,7 +1,6 @@
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
 
-
 class Layer{
     constructor(x,y,w,h){
         this.offset = {
@@ -54,19 +53,12 @@ var theBall = {
     sx: 0.2,
     sy: 0.2,
     last: Date.now(),
-    attemptMove(){
+    move(x, y, t){
         var now = Date.now()
         var dt = now - this.last
-        return{
-            x: this.x + dt * this.sx,
-            y: this.y + dt * this.sy,
-            t: now,
-        }
-    },    
-    move(x, y, t){
-        this.x = x
-        this.y = y
-        this.last = t
+        this.x = this.x + dt * this.sx
+        this.y = this.y + dt * this.sy
+        this.last = now
     }
 }
 
@@ -97,13 +89,13 @@ class Brick{
         return x > this.x && x < this.x + this.w && y > this.y && y < this.y + this.h
     }
 }
+
 var theBricks = []
 for (var x=80; x<640-80; x+= 80){
     for (var y=20; y<200; y+= 40){
         theBricks.push(new Brick(x+20,y+10,60,20))
     }
 }
-
 
 var gameLayer = new CopyCanvasLayer(canvas)
 gameLayer.state = {
@@ -126,11 +118,11 @@ gameLayer.drawPaddle = function(paddle){
     this.ctx.fill()
 }
 gameLayer.drawBrick = function(brick){
-    ctx.beginPath()
-    ctx.rect(brick.x,brick.y,brick.w,brick.h)
-    ctx.fillStyle = "blue"
-    ctx.closePath()
-    ctx.fill()
+    this.ctx.beginPath()
+    this.ctx.rect(brick.x,brick.y,brick.w,brick.h)
+    this.ctx.fillStyle = "blue"
+    this.ctx.closePath()
+    this.ctx.fill()
 }
 gameLayer.render = function(){
     this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height)
@@ -139,8 +131,11 @@ gameLayer.render = function(){
     for(var brick of this.state.bricks){
         this.drawBrick(brick)
     }
+    this.ctx.fillStyle = "green"
+    this.ctx.font = "16px"
+    this.ctx.fillText("Scort:" + score,20,20)
+    this.ctx.fillText("Life:" + life,20,40)
 }
-
 manager.addLayer(gameLayer)
 
 class PressedTimer {
@@ -173,7 +168,7 @@ function getHandler(bool){
         if (e.keyCode === 37){
             keyState.left.setStatus(bool)
         }else if (e.keyCode === 39){
-            keyState.right.setStatus(bool)            
+            keyState.right.setStatus(bool)
         }
     }
 }
@@ -182,32 +177,45 @@ document.addEventListener("keydown", getHandler(true))
 document.addEventListener("keyup", getHandler(false))
 
 thePaddle.keyState = keyState
-function main (){    
-    requestAnimationFrame(main)
-    thePaddle.move()
-    
-    var dst = theBall.attemptMove()
-    theBall.move(dst.x, dst.y, dst.t)
+
+
+
+var score = 0;
+var life = 3;
+
+var animation 
+function main (){
+    var animation = requestAnimationFrame(main)
+
+    thePaddle.move()    
+    theBall.move()
 
     for(var idx in theBricks){
         var brick = theBricks[idx]
-        if (brick.hit(dst.x, dst.y)){
+        if (brick.hit(theBall.x, theBall.y)){
             theBricks.splice(idx, 1)
             var lx = theBall.sx > 0 ? brick.x : brick.x + brick.w
             var ly = theBall.sy > 0 ? brick.y : brick.y + brick.h
-            var dd = (dst.x - lx) * theBall.sy - (dst.y -ly)* theBall.sx
-            if (dd * theBall.sx * theBall.sy < 0){                
-                theBall.x = 2 * lx - theBall.x                
+            var dd = (theBall.x - lx) * theBall.sy - (theBall.y -ly)* theBall.sx
+            if (dd * theBall.sx * theBall.sy < 0){
+                theBall.x = 2 * lx - theBall.x
                 theBall.sx = -theBall.sx
             }else {
-                theBall.y = 2 * ly - theBall.y                
-                theBall.sy = -theBall.sy
-
+                theBall.y = 2 * ly - theBall.y
+                theBall.sy = -theBall.sy                
             }
+            score++
+            
             break
         }
     }
-            
+
+    if (theBricks.length === 0){       
+        cancelAnimationFrame(animation)
+        alert("win")
+        document.location.reload()
+    }
+    
     if (theBall.x > theBall.maxX || theBall.x < theBall.minX){
         if (theBall.x > theBall.maxX){
             theBall.x = 2 * theBall.maxX - theBall.x
@@ -217,11 +225,19 @@ function main (){
         theBall.sx = -theBall.sx
     }
 
-    if (theBall.y > theBall.maxY || theBall.y < theBall.minY){        
+    if (theBall.y > theBall.maxY || theBall.y < theBall.minY){
         if (theBall.y > theBall.maxY){
             if (theBall.x < thePaddle.x - thePaddle.w/2 || theBall.x > thePaddle.x + thePaddle.w/2){
-                alert("Game Over")
-                document.location.reload()
+                if (--life){
+                    theBall.x = 320
+                    theBall.y = 480
+                    theBall.sx = 0.2
+                    theBall.sy = 0.2
+                }else{
+                    cancelAnimationFrame(animation)
+                    alert("Game Over")
+                    document.location.reload()                    
+                }
             }
             theBall.y = 2 * theBall.maxY - theBall.y
         } else if(theBall.y < theBall.minY){
@@ -229,7 +245,6 @@ function main (){
         }
         theBall.sy = -theBall.sy
     }
-
     
     manager.render()
 }
