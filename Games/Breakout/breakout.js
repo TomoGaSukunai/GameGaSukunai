@@ -31,17 +31,8 @@ class CopyCanvasLayer extends Layer{
 
 var manager = {
     layers: [],
-    sprites: [],
-    addSprite(sprite){
-        this.sprites.push(sprite)
-    },
     addLayer(layer){
         this.layers.push(layer)
-    },
-    move(){
-        for(var sprite of this.sprites){
-            sprite.move()
-        }
     },
     render(){
         ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -61,36 +52,21 @@ var theBall = {
     maxX: canvas.width - 10,
     maxY: canvas.height - 20,
     sx: 0.2,
-    sy: 0.2,        
+    sy: 0.2,
     last: Date.now(),
-    move(){
+    attemptMove(){
         var now = Date.now()
         var dt = now - this.last
-        this.x = this.x + dt * this.sx
-        this.y = this.y + dt * this.sy
-
-        if (this.x > this.maxX || this.x < this.minX){
-            if (this.x > this.maxX){
-                this.x = 2 * this.maxX - this.x
-            }else if (this.x < this.minX){
-                this.x = 2 * this.minX - this.x
-            }
-            this.sx = -this.sx
+        return{
+            x: this.x + dt * this.sx,
+            y: this.y + dt * this.sy,
+            t: now,
         }
-
-        if (this.y > this.maxY || this.y < this.minY){        
-            if (this.y > this.maxY){
-                if (this.x < thePaddle.x - thePaddle.w/2 || this.x > thePaddle.x + thePaddle.w/2){
-                    alert("Game Over")
-                    document.location.reload()
-                }
-                this.y = 2 * this.maxY - this.y
-            } else if(this.y < this.minY){
-                this.y = 2 * this.minY - this.y
-            }
-            this.sy = -this.sy
-        }
-        this.last = now
+    },    
+    move(x, y, t){
+        this.x = x
+        this.y = y
+        this.last = t
     }
 }
 
@@ -110,10 +86,30 @@ var thePaddle = {
     }
 }
 
+class Brick{
+    constructor(x,y,w,h){
+        this.x = x
+        this.y = y
+        this.w = w
+        this.h = h
+    }
+    hit(x,y){
+        return x > this.x && x < this.x + this.w && y > this.y && y < this.y + this.h
+    }
+}
+var theBricks = []
+for (var x=80; x<640-80; x+= 80){
+    for (var y=20; y<200; y+= 40){
+        theBricks.push(new Brick(x+20,y+10,60,20))
+    }
+}
+
+
 var gameLayer = new CopyCanvasLayer(canvas)
 gameLayer.state = {
     ball: theBall,
     paddle: thePaddle,
+    bricks: theBricks,
 }
 gameLayer.drawBall = function(ball){
     this.ctx.beginPath()
@@ -129,17 +125,22 @@ gameLayer.drawPaddle = function(paddle){
     this.ctx.fillStyle = "blue"
     this.ctx.fill()
 }
+gameLayer.drawBrick = function(brick){
+    ctx.beginPath()
+    ctx.rect(brick.x,brick.y,brick.w,brick.h)
+    ctx.fillStyle = "blue"
+    ctx.closePath()
+    ctx.fill()
+}
 gameLayer.render = function(){
     this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height)
     this.drawBall(this.state.ball)
     this.drawPaddle(this.state.paddle)
+    for(var brick of this.state.bricks){
+        this.drawBrick(brick)
+    }
 }
 
-
-
-
-manager.addSprite(theBall)
-manager.addSprite(thePaddle)
 manager.addLayer(gameLayer)
 
 class PressedTimer {
@@ -183,7 +184,53 @@ document.addEventListener("keyup", getHandler(false))
 thePaddle.keyState = keyState
 function main (){    
     requestAnimationFrame(main)
-    manager.move()
+    thePaddle.move()
+    
+    var dst = theBall.attemptMove()
+    theBall.move(dst.x, dst.y, dst.t)
+
+    for(var idx in theBricks){
+        var brick = theBricks[idx]
+        if (brick.hit(dst.x, dst.y)){
+            theBricks.splice(idx, 1)
+            var lx = theBall.sx > 0 ? brick.x : brick.x + brick.w
+            var ly = theBall.sy > 0 ? brick.y : brick.y + brick.h
+            var dd = (dst.x - lx) * theBall.sy - (dst.y -ly)* theBall.sx
+            if (dd * theBall.sx * theBall.sy < 0){                
+                theBall.x = 2 * lx - theBall.x                
+                theBall.sx = -theBall.sx
+            }else {
+                theBall.y = 2 * ly - theBall.y                
+                theBall.sy = -theBall.sy
+
+            }
+            break
+        }
+    }
+            
+    if (theBall.x > theBall.maxX || theBall.x < theBall.minX){
+        if (theBall.x > theBall.maxX){
+            theBall.x = 2 * theBall.maxX - theBall.x
+        }else if (theBall.x < theBall.minX){
+            theBall.x = 2 * theBall.minX - theBall.x
+        }
+        theBall.sx = -theBall.sx
+    }
+
+    if (theBall.y > theBall.maxY || theBall.y < theBall.minY){        
+        if (theBall.y > theBall.maxY){
+            if (theBall.x < thePaddle.x - thePaddle.w/2 || theBall.x > thePaddle.x + thePaddle.w/2){
+                alert("Game Over")
+                document.location.reload()
+            }
+            theBall.y = 2 * theBall.maxY - theBall.y
+        } else if(theBall.y < theBall.minY){
+            theBall.y = 2 * theBall.minY - theBall.y
+        }
+        theBall.sy = -theBall.sy
+    }
+
+    
     manager.render()
 }
 
