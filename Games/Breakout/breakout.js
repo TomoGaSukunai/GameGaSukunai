@@ -184,9 +184,10 @@ var score = 0;
 var life = 3;
 
 var animation 
+var stopFlag = false
 function main (){
     var animation = requestAnimationFrame(main)
-
+    stopFlag && cancelAnimationFrame(animation)
     thePaddle.move()    
     theBall.move()
 
