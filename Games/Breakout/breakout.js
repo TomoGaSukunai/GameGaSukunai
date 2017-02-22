@@ -205,7 +205,7 @@ function main (){
                 theBall.y = 2 * ly - theBall.y
                 theBall.sy = -theBall.sy                
             }
-            audioBrick.play()
+            audioBrick.cloneNode().play()
             score++
             
             break
@@ -224,7 +224,7 @@ function main (){
         }else if (theBall.x < theBall.minX){
             theBall.x = 2 * theBall.minX - theBall.x
         }
-        audioBounce.play()
+        audioBounce.cloneNode().play()
         theBall.sx = -theBall.sx
     }
 
@@ -247,7 +247,7 @@ function main (){
         } else if(theBall.y < theBall.minY){
             theBall.y = 2 * theBall.minY - theBall.y
         }
-        audioBounce.play()
+        audioBounce.cloneNode().play()
         theBall.sy = -theBall.sy
     }
     
