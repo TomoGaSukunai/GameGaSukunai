@@ -74,3 +74,31 @@ function play(buffer, delay = 0){
 canvas.onclick = function(){
     play(sb)
 }
+
+
+function playSine(Freq, time){
+    var osi = auCtx.createOscillator()
+    osi.frequency.value = Freq
+    osi.type = "sine"
+    osi.connect(analyser)
+    osi.start()
+    osi.stop(auCtx.currentTime + time)
+}
+var real = new Float32Array(3);
+var imag = new Float32Array(3);
+
+real[0] = 0;
+imag[0] = 0;
+real[1] = 1;
+imag[1] = 0;
+
+
+function playPeriod(real, imag){
+    var osi = auCtx.createOscillator()
+    var wave = auCtx.createPeriodicWave(real, imag);
+    osi.setPeriodicWave(wave);
+    osi.connect(analyser)
+    osi.start()
+    osi.stop(auCtx.currentTime+1)
+    console.log(osi.frequency)
+}
