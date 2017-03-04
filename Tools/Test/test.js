@@ -158,3 +158,52 @@ function playData(data){
     }
     s.start()
 }
+
+var note_envelope = {
+    attack: 1000,
+    decay: 500,
+    sustain: 10000,
+    release: 1000
+}
+
+function createNote(freq, envelope){
+    var n = envelope.attack + envelope.decay + envelope.sustain + envelope.release
+    var res = new Float32Array(n)
+    var idx = 0
+    var wt = Math.PI*2*freq/audioContext.sampleRate
+
+    for (var i=0; i<envelope.attack; i++){
+        res[idx++] = Math.sin(idx * wt) * (i/envelope.attack)        
+    }
+    for(var i=0; i<envelope.decay; i++){
+        res[idx++] = Math.sin(idx * wt) * (1 - i/envelope.decay/4)
+    }
+    for(var i=0; i<envelope.sustain; i++){
+        res[idx++] = Math.sin(idx * wt) * 0.75
+    }
+    for(var i=0; i<envelope.release; i++){
+        res[idx++] = Math.sin(idx * wt) * (1 - i/envelope.release) * 0.75
+    }    
+    return res
+}
+
+function createEnvelope(nth){
+    var sustain = audioContext.sampleRate*4/nth - 1000-500-1000
+    return {
+        attack: 1000,
+        decay: 500,
+        sustain: sustain,
+        release: 1000
+    }
+}
+
+
+
+function getFreq(n,plus=0){
+    var t = n
+    return Math.pow(261.626,plus)
+}
+
+function playNotes(notes){
+    
+}
