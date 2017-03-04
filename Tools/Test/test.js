@@ -1,4 +1,4 @@
-var fft = require(__dirname+"/../../lib/fft")
+var {FFT, IFFT} = require(__dirname+"/../../lib/fft")
 var {data1,data2} =require("./data.js")
 data1 = new Uint8Array(Buffer.from(data1,"base64"))
 data2 = new Uint8Array(Buffer.from(data2,"base64"))
@@ -22,7 +22,7 @@ var aBuffer
 function stft(signal, stftSize){
     var ana = []
     for(var i=0;i<signal.real.length - stftSize;i+=stftSize){        
-        ana.push(amp(fft(signal, i, stftSize)))
+        ana.push(amp(FFT(signal, i, stftSize)))
     }
     var max = ana.reduce((a,b)=>Math.max(a,b.reduce((a,b)=>Math.max(a,b))),0)
     var min = ana.reduce((a,b)=>Math.min(a,b.reduce((a,b)=>Math.min(a,b))),1)
@@ -30,8 +30,6 @@ function stft(signal, stftSize){
     ana = ana.map(a=>a.map(x=>(x-min)/delta*3))
     return ana
 }
-
-
 var audioHandler=function(buffer){
     var rs = trim(buffer.getChannelData(0),0.1)
     aBuffer = buffer
@@ -54,7 +52,9 @@ var audioHandler=function(buffer){
 
     //draw2DColor(ana,ctx,{x:0,y:0,w:canvas.width,h:canvas.height})
 }
-
+function clearArea(ctx,area){
+    ctx.clearRect(area.x,area.y,area.w,area.h)
+}
 function drawArrayCol(data, ctx, area){
     //ctx.clearRect(area.x, area.y, area.w, area.h)
     ctx.strokeStyle = "rgb(0,0,0)"
@@ -104,7 +104,6 @@ for(var i=0; i<128; i++){
     colorTest.push(line)
 }
 area = {x:0,y:0,w:canvas.width,h:canvas.height}
-
 function holeArea(){
     return {x:0,y:0,w:canvas.width,h:canvas.height}
 }
@@ -128,9 +127,7 @@ var readAudioBuffer = function (filename, callback){
         })
     })
 }
-
 readAudioBuffer(__dirname+"/poi.mp3",audioHandler)
-
 function trim(signal, percent){
     var max = signal.reduce((a,b)=>Math.max(a,b))
     var head = 0, tail = signal.length
@@ -146,7 +143,6 @@ function trim(signal, percent){
     }
     return signal.slice(head - 1,tail-head+2)
 }
-
 function playData(data){
 
     var buffer = audioContext.createBuffer(1,data.length,audioContext.sampleRate)
