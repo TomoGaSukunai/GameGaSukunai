@@ -1,19 +1,10 @@
-var {FFT, IFFT} = require(__dirname+"/../../lib/fft")
+var {FFT, IFFT, Amplitude} = require(__dirname+"/../../lib/fft")
 var drawing = require("../../lib/drawing")
 var {data1,data2} =require("./data.js")
 data1 = new Uint8Array(Buffer.from(data1,"base64"))
 data2 = new Uint8Array(Buffer.from(data2,"base64"))
 
 var audioContext = new AudioContext()
-var amp = function (comp){
-    var {real, imag} = comp
-    var n = real.length/2
-    var res = new Float32Array(n)
-    for (var k = 0; k < n; k++){
-        res[k] = Math.sqrt(real[k]*real[k] + imag[k]*imag[k])/n
-    }
-    return res
-}
 
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
@@ -24,7 +15,7 @@ var aBuffer
 function stft(signal, stftSize){
     var ana = []
     for(var i=0;i<signal.real.length - stftSize;i+=stftSize){        
-        ana.push(amp(FFT(signal, i, stftSize)))
+        ana.push(Amplitude(FFT(signal, i, stftSize)))
     }
     var max = ana.reduce((a,b)=>Math.max(a,b.reduce((a,b)=>Math.max(a,b))),0)
     var min = ana.reduce((a,b)=>Math.min(a,b.reduce((a,b)=>Math.min(a,b))),1)
@@ -32,7 +23,7 @@ function stft(signal, stftSize){
     ana = ana.map(a=>a.map(x=>(x-min)/delta*3))
     return ana
 }
-var audioHandler=function(buffer){
+var audioHandler = function(buffer){
     var rs = trim(buffer.getChannelData(0),0.1)
     aBuffer = buffer
     var signal = {
@@ -41,7 +32,6 @@ var audioHandler=function(buffer){
     }
     var stftSize = 512
     ana = stft(signal, stftSize)
-
 
     draw2DColor(ana, ctx, canvasArea.getHoleArea())
 
@@ -52,9 +42,7 @@ var audioHandler=function(buffer){
     for(var i=0;i<stftSize/2;i++){
         var data = ana.map(a=>a[i])
         drawing.drawFloatsRow(data, ctx, canvasArea.getRow(stftSize/2, i))
-    }
-
-    
+    }    
 }
 
 function draw2DColor(data, ctx, area){
@@ -87,8 +75,12 @@ for(var i=0; i<128; i++){
     }
     colorTest.push(line)
 }
+
+
 //draw2DColor(colorTest, ctx, area)
 //audioContext.decodeAudioData(data2.buffer,audioHandler)
+
+
 var fs = require("fs")
 var readAudioBuffer = function (filename, callback){
     var bufferLength = fs.lstatSync(filename).size

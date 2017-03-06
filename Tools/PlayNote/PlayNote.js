@@ -1,9 +1,9 @@
+var drawing = require("../../lib/drawing")
+
 var then = Date.now()
 var audioContext = new AudioContext()
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
-
-var drawing = require("../../lib/drawing")
 
 function playData(data, node){
 
