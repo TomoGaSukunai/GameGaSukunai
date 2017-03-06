@@ -1,8 +1,10 @@
 var then = Date.now()
-
 var audioContext = new AudioContext()
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
+
+var drawing = require("../../lib/drawing")
+
 function playData(data, node){
 
     var buffer = audioContext.createBuffer(1, data.length, audioContext.sampleRate)
@@ -77,41 +79,6 @@ function playNotes(notes){
         }
     playData(res)
 }
-function clearArea(ctx,area){
-    ctx.clearRect(area.x,area.y,area.w,area.h)
-}
-function drawArrayRow(data, ctx, area){
-    //ctx.clearRect(area.x, area.y, area.w, area.h)
-    ctx.strokeStyle = "rgb(0,0,0)"
-    ctx.beginPath()
-    for (var i=0; i<data.length; i++){        
-        ctx.lineTo(area.x + i/data.length*area.w, area.y + area.h/2*(1 - data[i]))        
-    }
-    ctx.stroke()
-}
-function drawByteRow(bytes, ctx, area){
-    //ctx.clearRect(area.x, area.y, area.w, area.h)
-    ctx.strokeStyle = "rgb(0,0,0)"
-    ctx.beginPath()
-    for (var i=0; i<bytes.length; i++){        
-        ctx.lineTo(area.x + i/bytes.length*area.w, area.y + area.h/2*(1 - bytes[i]/256))        
-    }
-    ctx.stroke()
-}
-function drawByteBars(bytes, ctx, area){
-    //ctx.clearRect(area.x, area.y, area.w, area.h)    
-    ctx.fillStyle = "rgb(0,0,0)"
-    var dx = area.w / bytes.length
-    for (var i=0; i<bytes.length; i++){        
-        var v = (bytes[i]/256)
-        ctx.beginPath()
-        ctx.rect(area.x + i * dx, area.y+area.h/2, dx, area.y - v*area.h/2)
-        ctx.fillStyle = "rgb("+Math.floor(v*128 +100)+",50,50)"        
-        ctx.fill()        
-    }
-    ctx.stroke()
-}
-
 function holeArea(){
     return {x:0,y:0,w:canvas.width,h:canvas.height}
 }
@@ -172,8 +139,8 @@ function drawFreq(){
 
     anylser.getByteFrequencyData(anaF)
     
-    clearArea(ctx, holeArea())
-    drawByteBars(anaF, ctx, holeArea())
+    drawing.clearArea(ctx, holeArea())
+    drawing.drawByteBars(anaF, ctx, holeArea())
     //console.log(anaF.reduce((a,b)=>Math.max(a,b)))
     //console.log(anaF.reduce((a,b)=>Math.min(a,b)))
 }

@@ -1,4 +1,5 @@
 var {FFT, IFFT} = require(__dirname+"/../../lib/fft")
+var drawing = require("../../lib/drawing")
 var {data1,data2} =require("./data.js")
 data1 = new Uint8Array(Buffer.from(data1,"base64"))
 data2 = new Uint8Array(Buffer.from(data2,"base64"))
@@ -43,36 +44,16 @@ var audioHandler=function(buffer){
 
     for(var i=0;i<ana.length;i++){
         var data = ana[i]
-        drawArrayCol(data, ctx, {x:i/ana.length * canvas.width,y:0,w:canvas.width/ana.length,h:canvas.height})
+        drawing.drawFloatsCol(data, ctx, {x:i/ana.length * canvas.width,y:0,w:canvas.width/ana.length,h:canvas.height})
     }
     for(var i=0;i<stftSize/2;i++){
         var data = ana.map(a=>a[i])
-        drawArrayRow(data, ctx, {x:0, y:i/stftSize*2 * canvas.height,h:canvas.height/stftSize*2,w:canvas.width})
+        drawing.drawFloatsRow(data, ctx, {x:0, y:i/stftSize*2 * canvas.height,h:canvas.height/stftSize*2,w:canvas.width})
     }
 
     //draw2DColor(ana,ctx,{x:0,y:0,w:canvas.width,h:canvas.height})
 }
-function clearArea(ctx,area){
-    ctx.clearRect(area.x,area.y,area.w,area.h)
-}
-function drawArrayCol(data, ctx, area){
-    //ctx.clearRect(area.x, area.y, area.w, area.h)
-    ctx.strokeStyle = "rgb(0,0,0)"
-    ctx.beginPath()
-    for (var i=0; i<data.length; i++){        
-        ctx.lineTo(area.x + area.w/2*(1 + data[i]),area.y + i/data.length*area.h)        
-    }
-    ctx.stroke()
-}
-function drawArrayRow(data, ctx, area){
-    //ctx.clearRect(area.x, area.y, area.w, area.h)
-    ctx.strokeStyle = "rgb(0,0,0)"
-    ctx.beginPath()
-    for (var i=0; i<data.length; i++){        
-        ctx.lineTo(area.x + i/data.length*area.w, area.y + area.h/2*(1 - data[i]))        
-    }
-    ctx.stroke()
-}
+
 function draw2DColor(data, ctx, area){
     var dx = area.w / data.length
     var dy = area.h / data[0].length
@@ -121,7 +102,6 @@ var readAudioBuffer = function (filename, callback){
         //console.log(fd)
         fs.read(fd, buf, 0, bufferLength, null ,function(err, bytesRead, buffer){
             audioContext.decodeAudioData(buf.buffer,function(audioBuffer){                
-                //console.log(audioBuffer)
                 callback(audioBuffer)
             })
         })
@@ -158,99 +138,3 @@ function playData(data){
     }
     s.start()
 }
-
-var note_envelope = {
-    attack: 1000,
-    decay: 500,
-    sustain: 10000,
-    release: 1000
-}
-
-function createNote(freq, envelope){
-    var n = envelope.attack + envelope.decay + envelope.sustain + envelope.release
-    var res = new Float32Array(n)
-    var idx = 0
-    var wt = Math.PI*2*freq/audioContext.sampleRate
-
-    for (var i=0; i<envelope.attack; i++){
-        res[idx++] = Math.sin(idx * wt) * (i/envelope.attack)        
-    }
-    for(var i=0; i<envelope.decay; i++){
-        res[idx++] = Math.sin(idx * wt) * (1 - i/envelope.decay/4)
-    }
-    for(var i=0; i<envelope.sustain; i++){
-        res[idx++] = Math.sin(idx * wt) * 0.75
-    }
-    for(var i=0; i<envelope.release; i++){
-        res[idx++] = Math.sin(idx * wt) * (1 - i/envelope.release) * 0.75
-    }    
-    return res
-}
-
-function createEnvelope(n_eighth){
-    var sustain = audioContext.sampleRate*4/8*n_eighth - 1000-500-1000
-    return {
-        attack: 1000,
-        decay: 500,
-        sustain: sustain,
-        release: 1000
-    }
-}
-
-
-const ddd = Math.log(2)/12
-function getFreq(n,plus=0){
-    var t = n*2 + (n>3?-1:0) -1
-    
-    return Math.exp(ddd*(t+12*plus))*261.626
-}
-notes2 = [
-    [3,1,2],[2,1,2], [1,1,2],[7,0,2], [6,0,2],[5,0,2], [6,0,2],[7,0,2],
-    [1,1,2],[7,0,2], [6,0,2],[5,0,2], [4,0,2],[3,0,2], [4,0,2],[2,0,2],  
-    [1,1,8],[7,0,8],[1,1,8],[1,0,8],  [7,-1,8],[5,0,8],[2,0,8],[3,0,8],
-    [1,0,8],[1,1,8],[7,0,8],[6,0,8],  [7,0,8],[3,1,8],[5,1,8],[6,1,8],
-    [4,1,8],[3,1,8],[2,1,8],[4,1,8],  [4,1,8],[3,1,8],[1,1,8],[7,0,8],
-    [6,0,8],[5,0,8],[4,0,8],[3,0,8],  [2,0,8],[4,0,8],[3,0,8],[2,0,8],
-    [1,0,8],[2,0,8],[3,0,8],[4,0,8],  [5,0,8],[2,0,8],[5,0,8],[4,0,8],
-    [3,0,8],[6,0,8],[5,0,8],[4,0,8],  [5,0,8],[4,0,8],[3,0,8],[2,0,8],    
-    [1,0,8],[6,-1,8],[6,0,8],[7,0,8],  [1,1,8],[7,0,8],[6,0,8],[5,0,8],
-    [4,0,8],[3,0,8],[2,0,8],[6,0,8],  [5,0,8],[6,0,8],[5,0,8],[4,0,8],    
-
-]
-
-notes = [
-    [3,1,4],[2,1,4], [1,1,4],[7,0,4], [6,0,4],[5,0,4], [6,0,4],[7,0,4],
-    [3,1,4],[2,1,4], [1,1,4],[7,0,4], [6,0,4],[5,0,4], [6,0,4],[7,0,4],
-
-    [1,1,2],[3,0,2],[5,0,2],[4,0,2],  [3,0,2],[1,0,2],[3,0,2],[2,0,2],
-    [1,0,2],[6,-1,2],[1,0,2],[5,0,2],  [4,0,2],[6,0,2],[5,0,2],[4,0,2],
-
-    [3,0,2],[1,0,2],[2,0,2],[7,0,2],  [1,1,2],[3,1,2],[5,1,2],[5,0,2],
-    [6,0,2],[4,0,2],[5,0,2],[3,0,2],  [1,0,4],[1,0,6],[7,-1,2],
-
-    [1,0,1],[2,0,1],[3,0,1],[4,0,1],[5,0,1],[2,0,1],[3,0,1],[4,0,1],
-    [3,0,1],[6,0,1],[5,0,1],[4,0,1],[5,0,1],[4,0,1],[3,0,1],[2,0,1],
-    [1,0,2],[6,0,1],[7,0,1], [1,1,1],[7,0,1],[6,0,1],[5,0,1],
-    [4,0,1],[3,0,1],[2,0,1],[6,0,1],[5,0,4],
-    
-    
-    
-
-]
-function playNotes(notes){
-    var sigs = []
-    var n = 0
-    for(var note of notes) {
-        var sig = createNote(getFreq(note[0],note[1]), createEnvelope(note[2]))
-        sigs.push(sig)
-        n += sig.length
-    }
-    var res = new Float32Array(n)
-    var idx = 0
-    for (var sig of sigs)
-        for(var x of sig){
-            res[idx++] = x/2
-        }
-    playData(res)
-}
-
