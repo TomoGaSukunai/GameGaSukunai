@@ -5,6 +5,8 @@ var audioContext = new AudioContext()
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
 
+var canvasArea = new drawing.CanvasArea(canvas)
+
 function playData(data, node){
 
     var buffer = audioContext.createBuffer(1, data.length, audioContext.sampleRate)
@@ -79,9 +81,6 @@ function playNotes(notes){
         }
     playData(res)
 }
-function holeArea(){
-    return {x:0,y:0,w:canvas.width,h:canvas.height}
-}
 const noteNames = {
     do: 1,
     re: 2,
@@ -138,9 +137,9 @@ function drawFreq(){
     requestAnimationFrame(drawFreq)
 
     anylser.getByteFrequencyData(anaF)
-    
-    drawing.clearArea(ctx, holeArea())
-    drawing.drawByteBars(anaF, ctx, holeArea())
+    var holeArea = canvasArea.getHoleArea()
+    drawing.clearArea(ctx, holeArea)
+    drawing.drawByteBars(anaF, ctx, holeArea)
     //console.log(anaF.reduce((a,b)=>Math.max(a,b)))
     //console.log(anaF.reduce((a,b)=>Math.min(a,b)))
 }
