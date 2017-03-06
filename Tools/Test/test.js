@@ -18,6 +18,7 @@ var amp = function (comp){
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
 
+var canvasArea = new drawing.CanvasArea(canvas)
 var ana
 var aBuffer
 function stft(signal, stftSize){
@@ -42,16 +43,18 @@ var audioHandler=function(buffer){
     ana = stft(signal, stftSize)
 
 
+    draw2DColor(ana, ctx, canvasArea.getHoleArea())
+
     for(var i=0;i<ana.length;i++){
         var data = ana[i]
-        drawing.drawFloatsCol(data, ctx, {x:i/ana.length * canvas.width,y:0,w:canvas.width/ana.length,h:canvas.height})
+        drawing.drawFloatsCol(data, ctx, canvasArea.getCol(ana.length,i))
     }
     for(var i=0;i<stftSize/2;i++){
         var data = ana.map(a=>a[i])
-        drawing.drawFloatsRow(data, ctx, {x:0, y:i/stftSize*2 * canvas.height,h:canvas.height/stftSize*2,w:canvas.width})
+        drawing.drawFloatsRow(data, ctx, canvasArea.getRow(stftSize/2, i))
     }
 
-    //draw2DColor(ana,ctx,{x:0,y:0,w:canvas.width,h:canvas.height})
+    
 }
 
 function draw2DColor(data, ctx, area){
@@ -65,7 +68,7 @@ function draw2DColor(data, ctx, area){
             ctx.rect(area.x+dx * i-0.5, area.y+dy * j -0.5,dx+1,dy+1)
             ctx.fillStyle = getStyle(line[j])
             ctx.fill()
-        }        
+        }
     }
 }
 function getStyle(x){
@@ -83,10 +86,6 @@ for(var i=0; i<128; i++){
         line.push((i+j)*3/256)
     }
     colorTest.push(line)
-}
-area = {x:0,y:0,w:canvas.width,h:canvas.height}
-function holeArea(){
-    return {x:0,y:0,w:canvas.width,h:canvas.height}
 }
 //draw2DColor(colorTest, ctx, area)
 //audioContext.decodeAudioData(data2.buffer,audioHandler)
