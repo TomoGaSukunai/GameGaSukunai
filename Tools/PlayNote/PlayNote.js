@@ -1,7 +1,9 @@
+var then = Date.now()
+
 var audioContext = new AudioContext()
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
-function playData(data){
+function playData(data, node){
 
     var buffer = audioContext.createBuffer(1, data.length, audioContext.sampleRate)
     var signal = buffer.getChannelData(0)
@@ -10,9 +12,9 @@ function playData(data){
     }
     var s = audioContext.createBufferSource()
     s.buffer = buffer
-    s.connect(audioContext.destination)
+    s.connect(node)
     s.onended = function(){
-        s.disconnect(audioContext.destination)
+        s.disconnect(node)
     }
     s.start()
 }
@@ -39,7 +41,7 @@ function createNote(freq, envelope){
 }
 
 function createEnvelope(n_eighth){
-    var sustain = audioContext.sampleRate*4/8*n_eighth - 1000-500-1000
+    var sustain = audioContext.sampleRate*2/16*n_eighth - 1000-500-1000
     return {
         attack: 1000,
         decay: 500,
@@ -51,6 +53,11 @@ function createEnvelope(n_eighth){
 const dNote = Math.log(2)/12
 function getFreq(n, plus=0){
     var t = n*2 + (n>3?-1:0) - 2
+    return Math.exp(dNote*(t+12*plus))*261.626
+}
+
+function getFreqD(n, plus=0){
+    var t = n*2 + (n>3?-1:0)
     return Math.exp(dNote*(t+12*plus))*261.626
 }
 
@@ -70,32 +77,9 @@ function playNotes(notes){
         }
     playData(res)
 }
-
-function createSlope(freq1, freq2, envelope){
-    var n = envelope.attack + envelope.decay + envelope.sustain + envelope.release
-    var res = new Float32Array(n)
-    var idx = 0
-    var wt1 = Math.PI*2*freq1/audioContext.sampleRate
-    var wt2 = Math.PI*2*freq2/audioContext.sampleRate
-    var dwt  = (wt2-wt1)/envelope.sustain
-    for (var i=0; i<envelope.attack; i++){
-        res[idx++] = Math.sin(idx * wt1) * (i/envelope.attack)        
-    }
-    for(var i=0; i<envelope.decay; i++){
-        res[idx++] = Math.sin(idx * wt1) * (1 - i/envelope.decay/4)
-    }
-    for(var i=0; i<envelope.sustain; i++){
-        //res[idx++] = Math.sin(idx * (wt1 + i*dwt)) * 0.75
-        res[idx++] = Math.sin(idx * wt1) * (1 - i/envelope.sustain)*0.75
-                    + Math.sin(idx * wt2) * (i/envelope.sustain)*0.75
-    }
-    for(var i=0; i<envelope.release; i++){
-        res[idx++] = Math.sin(idx * wt2) * (1 - i/envelope.release) * 0.75
-    }    
-    return res
+function clearArea(ctx,area){
+    ctx.clearRect(area.x,area.y,area.w,area.h)
 }
-
-createSlope(getFreq(3,0),getFreq(5,0),createEnvelope(2))
 function drawArrayRow(data, ctx, area){
     //ctx.clearRect(area.x, area.y, area.w, area.h)
     ctx.strokeStyle = "rgb(0,0,0)"
@@ -105,41 +89,94 @@ function drawArrayRow(data, ctx, area){
     }
     ctx.stroke()
 }
+function drawByteRow(bytes, ctx, area){
+    //ctx.clearRect(area.x, area.y, area.w, area.h)
+    ctx.strokeStyle = "rgb(0,0,0)"
+    ctx.beginPath()
+    for (var i=0; i<bytes.length; i++){        
+        ctx.lineTo(area.x + i/bytes.length*area.w, area.y + area.h/2*(1 - bytes[i]/256))        
+    }
+    ctx.stroke()
+}
+function drawByteBars(bytes, ctx, area){
+    //ctx.clearRect(area.x, area.y, area.w, area.h)    
+    ctx.fillStyle = "rgb(0,0,0)"
+    var dx = area.w / bytes.length
+    for (var i=0; i<bytes.length; i++){        
+        var v = (bytes[i]/256)
+        ctx.beginPath()
+        ctx.rect(area.x + i * dx, area.y+area.h/2, dx, area.y - v*area.h/2)
+        ctx.fillStyle = "rgb("+Math.floor(v*128 +100)+",50,50)"        
+        ctx.fill()        
+    }
+    ctx.stroke()
+}
+
 function holeArea(){
     return {x:0,y:0,w:canvas.width,h:canvas.height}
 }
-
-var canon = [
-    [4,1,4],[3,1,4],[2,1,4],[1,1,4],
-    [7,0,4],[6,0,4],[7,0,4],[1,1,4],
-    [3,1,4],[1,1,4],[7,0,4],[6,0,4],
-    [5,0,4],[4,0,4],[5,0,4],[3,0,4],
-    [24,0,4],[65,0,4],[42,0,4],[43,0,4],
-    [27,-1,4],[26,0,4],[57,0,4],[65,0,4],
-    [42,0,4],[31,1,4],[24,11,4],[66,10,4],
-    [75,0,4],[64,1,4],[22,01,4],[2,1,3],[1,1,1],
-    [2,1,1],[1,1,1],[2,1,1],[2,0,1],
-    //TODO
-]
-
-function playNotes(notes){
-    var sigs = []
-    var n = 0
-    for(var note of notes) {
-        
-        var sig
-        if (note[0]>10)
-            sig = createSlope(getFreq(Math.floor(note[0]/10),Math.floor(note[1]/10)),getFreq(note[0]%10,note[1]%10), createEnvelope(note[2]))    
-        else
-            sig = createNote(getFreq(note[0],note[1]), createEnvelope(note[2]))
-        sigs.push(sig)
-        n += sig.length
-    }
-    var res = new Float32Array(n)
-    var idx = 0
-    for (var sig of sigs)
-        for(var x of sig){
-            res[idx++] = x/2
-        }
-    playData(res)
+const noteNames = {
+    do: 1,
+    re: 2,
+    mi: 3,
+    fa: 4,
+    so: 5,
+    la: 6,
+    ti: 7,
+    tb: 6.5,
+    bl: 0,
 }
+const envNames ={
+    f: createEnvelope(4),
+    e: createEnvelope(2),
+    s: createEnvelope(1),
+}
+function matParse(mat){
+    var name = noteNames[mat.slice(0,2)]
+    var plus = parseInt(mat[2]) - 1
+    var env = mat[3]    
+    //console.log(name && getFreqD(name,plus),env)    
+    return createNote(name && getFreqD(name,plus),envNames[env])
+}
+var matnotes = require("./matnotes").split(" ").map(x=>matParse(x))
+var cello = "do1f do1f so0f so0f la0f la0f mi0f mi0f fa0f fa0f do0f do0f fa0f fa0f so0f so0f".split(" ").map(x=>matParse(x))
+var blkblock = "blkf blkf blkf blkf blkf blkf blkf blkf blkf blkf blkf blkf blkf blkf blkf blkf".split(" ").map(x=>matParse(x))
+var violin1 = [...blkblock, ...blkblock, ...blkblock, ...matnotes]
+var violin2 = [...blkblock, ...blkblock, ...matnotes, ...blkblock]
+var violin3 = [...blkblock, ...matnotes, ...blkblock, ...blkblock]
+var cellos = []
+for (var i=0; i<23; i++){
+    cellos = cellos.concat(cello)
+}
+cellos = cellos.concat(matParse("blkf"))
+function playSigss(node, ...sigss){
+    var c = sigss.length
+    var n = sigss[0].reduce((a,b)=>a+b.length,0)
+    var res = new Float32Array(n)
+    for (var sigs of sigss){
+        var idx = 0
+        for (var sig of sigs)
+            for(var x of sig){
+                res[idx++] += x/c/2
+            }        
+    }    
+    playData(res, node)
+}
+var anylser = audioContext.createAnalyser()
+anylser.connect(audioContext.destination)
+anylser.fftSize = 1024
+var anaF = new Uint8Array(anylser.frequencyBinCount/8)
+
+function drawFreq(){
+    requestAnimationFrame(drawFreq)
+
+    anylser.getByteFrequencyData(anaF)
+    
+    clearArea(ctx, holeArea())
+    drawByteBars(anaF, ctx, holeArea())
+    //console.log(anaF.reduce((a,b)=>Math.max(a,b)))
+    //console.log(anaF.reduce((a,b)=>Math.min(a,b)))
+}
+drawFreq()
+playSigss(anylser, cellos, violin1, violin2, violin3)
+console.log(Date.now() - then)
