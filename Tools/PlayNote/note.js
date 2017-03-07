@@ -12,22 +12,19 @@ const Note = class {
         this.envelope = envelope
         this.memo = {}
     }
-    getVal(t){
-        return Math.sin(t*this.w) * this.envelope.getGain(t)
-    }
     getSigs(offset, sampleRate){
-        count("getSigs")
+        //count("getSigs")
         if (this.memo[sampleRate] === undefined){
             this.memo[sampleRate] = {}
         }
         let temp_memo = this.memo[sampleRate]
         if (temp_memo[offset] === undefined){
-            count("getSigs.run")            
+            //count("getSigs.run")            
             let dt = 1/sampleRate
             let gains = this.envelope.getGains(offset, sampleRate)
-            let n = gains.length            
+            let n = gains.length
             let res = new Float32Array(n)
-            let t = 0            
+            let t = 0
             for (let i=0; i<n; i++){                
                 res[i] = Math.sin(t*this.w) * gains[i]
                 t += dt
@@ -37,7 +34,7 @@ const Note = class {
         return temp_memo[offset]
     }
     plusSigs(array, offsetN, offset, sampleRate, c){
-        count("plusSigs")
+        //count("plusSigs")
         let sigs = this.getSigs(offset, sampleRate)
         let n = sigs.length
         let j = offsetN
@@ -114,7 +111,7 @@ const envelopes = {
     e: new EnvelopeADSR(atk, dec, 2*t16-atk-dec-rls, rls),
     s: new EnvelopeADSR(atk, dec, t16-atk-dec-rls, rls),
 }
-
+const dNote = Math.log(2)/12
 const NoteLib = {
     memo:{},
     parseNote(mat){
