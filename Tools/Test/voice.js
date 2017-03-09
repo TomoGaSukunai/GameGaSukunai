@@ -1,6 +1,6 @@
 var fs = require("fs")
 var drawing = require("../../lib/drawing")
-var {FFT} = require("../../lib/fft")
+var {FFT, Amplitude} = require("../../lib/fft")
 var audioContext = new AudioContext()
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
@@ -85,12 +85,65 @@ var readAudioBuffer = function (filename, callback){
     })
 }
 
+var data
+var dataFiltered
 var myFrames
 var myFramesFFT
+var myFramesFFTA
 readAudioBuffer(__dirname +"/poi.mp3",function(audioBuffer){
-    var data = audioBuffer.getChannelData(0)
-    myFrames = getFrames(data)
-
+    data = audioBuffer.getChannelData(0)
+    dataFiltered = myFilter([1,-0.98], [1], data).map(x=>x*5)
+    myFrames = getFrames(dataFiltered)
     myFramesFFT = myFrames.map(x=>FFT({real:x, imag:[]},0,1024).real.map(x=>x/1024))
-
+    myFramesFFTA = myFrames.map(x=>Amplitude(FFT({real:x, imag:[]},0,1024)))
 })
+
+
+function myFilter(B,A,X){
+    var Y = new Float32Array(X.length)
+    for(var i=X.length-1; i>=0; i--){
+        var sumA = 0
+        var sumB = 0
+        for (var j=1; j<A.length; j++){
+            sumA += A[j] * (Y[i-j] || 0)
+        }
+        for(var j=0; j<B.length; j++){
+            sumB += B[j] * (X[i-j] || 0)
+        }
+        Y[i] =(sumB - sumA) /A[0]
+    }
+    return Y
+}
+
+// mel = 2595* log10(1 + f/700)
+// f = (10^(mel/2595) -1)*700
+function melFreq(f){
+    return 2595*Math.log10(1+f/700)
+}
+function freqMel(m){
+    return 700*(Math.pow(10, m/2595)-1)
+}
+
+function melFilter(m, F){
+    var res = new Float32Array(m)
+    var Fs = new Float32Array(m+2)
+    var dk = audioContext.sampleRate/2/F.length
+    var melMax = melFreq(audioContext.sampleRate/2)
+    var melDelta = melMax/(m+1)
+    for (var i=0; i<m+2; i++){
+        Fs[i] = freqMel(melDelta*i)
+    }
+    for(var i=0; i<F.length; i++){
+        var k = dk*i        
+        for(var j=1; j<m+1; j++){
+            if (k < Fs[j-1]) continue
+            if (k > Fs[j+1]) continue
+            if (k < Fs[j]){
+                res[j-1] += F[i]*F[i]*2*(k-Fs[j-1])/((Fs[j]-Fs[j-1])*(Fs[j+1]-Fs[j-1]))*dk*10
+            }else{
+                res[j-1] += F[i]*F[i]*2*(Fs[j+1]-k)/((Fs[j+1]-Fs[j])*(Fs[j+1]-Fs[j-1]))*dk*10
+            }           
+        }
+    }
+    return res
+}
