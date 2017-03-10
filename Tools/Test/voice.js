@@ -90,12 +90,18 @@ var dataFiltered
 var myFrames
 var myFramesFFT
 var myFramesFFTA
+var myFramesMF
+var myFramesMFL
+var myFramesMFCC
 readAudioBuffer(__dirname +"/poi.mp3",function(audioBuffer){
     data = audioBuffer.getChannelData(0)
     dataFiltered = myFilter([1,-0.98], [1], data).map(x=>x*5)
     myFrames = getFrames(dataFiltered)
     myFramesFFT = myFrames.map(x=>FFT({real:x, imag:[]},0,1024).real.map(x=>x/1024))
     myFramesFFTA = myFrames.map(x=>Amplitude(FFT({real:x, imag:[]},0,1024)))
+    myFramesMF = myFramesFFTA.map(x=>melFilter(20,x,300,3000))
+    myFramesMFL = myFramesMF.map(x=>x.map(y=>Math.log(y)/20))
+    myFramesMFCC = myFramesMFL.map(x=>DCT(x).slice(1,13))
 })
 
 
@@ -124,14 +130,16 @@ function freqMel(m){
     return 700*(Math.pow(10, m/2595)-1)
 }
 
-function melFilter(m, F){
+function melFilter(m, F, low, hi){
     var res = new Float32Array(m)
     var Fs = new Float32Array(m+2)
     var dk = audioContext.sampleRate/2/F.length
-    var melMax = melFreq(audioContext.sampleRate/2)
-    var melDelta = melMax/(m+1)
+    var melMax = melFreq(hi/2)
+    var melMin = melFreq(low/2)
+    
+    var melDelta = (melMax - melMin)/(m+1)
     for (var i=0; i<m+2; i++){
-        Fs[i] = freqMel(melDelta*i)
+        Fs[i] = freqMel(melMin + melDelta*i)
     }
     for(var i=0; i<F.length; i++){
         var k = dk*i        
@@ -147,3 +155,23 @@ function melFilter(m, F){
     }
     return res
 }
+
+function DCT(sig){
+    var n = sig.length
+    var m = n
+    var ret = new Float32Array(m)
+    for (var i=0; i<n; i++){
+        for(var j=0; j<m; j++){
+            ret[j] += sig[i]*Math.cos(j*(i+0.5)*Math.PI/n)
+        }
+    }
+    a = Math.sqrt(2/n)
+    for(var j=0; j<m; j++){
+        ret[j] *= a 
+    }
+    ret[0] = ret[0]/Math.sqrt(2)
+    
+    return ret
+}
+testSig = [1,2,3,4,5,6,7,8]
+dctSig = DCT(testSig)
