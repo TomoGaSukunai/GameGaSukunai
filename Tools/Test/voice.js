@@ -175,3 +175,26 @@ function DCT(sig){
 }
 testSig = [1,2,3,4,5,6,7,8]
 dctSig = DCT(testSig)
+
+function Type2DCTusingFFT(sig){
+    var n = 1 << Math.ceil(Math.log2(sig.length))    
+    var nn = n * 4
+    var m = sig.length
+    var ret = new Float32Array(m)
+    var _real = new Float32Array(nn)
+    for(var i=0; i<n;i++){
+        _real[i*2] = 0
+        _real[i*2+1] = sig[i] || 0
+        _real[nn-2*i-2] = 0
+        _real[nn-2*i-1] = sig[i] || 0
+    }
+    var temp = FFT({real:_real,imag:[]},0,nn).real
+
+    a = Math.sqrt(2/nn)
+    for(var j=0; j<m; j++){
+        ret[j] = a * temp[j]
+    }
+    ret[0] = ret[0]/Math.sqrt(2)
+    
+    return ret
+}
