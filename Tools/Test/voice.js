@@ -36,6 +36,9 @@ var bindArea = function(area, ctx){
             }();
         }
     }
+    da["draw2DColor"] = function(data){
+        draw2DColor(data,ctx,area)
+    }
     return da
 }
 
@@ -93,17 +96,28 @@ var myFramesFFTA
 var myFramesMF
 var myFramesMFL
 var myFramesMFCC
-readAudioBuffer(__dirname +"/poi.mp3",function(audioBuffer){
-    data = audioBuffer.getChannelData(0)
-    dataFiltered = myFilter([1,-0.98], [1], data).map(x=>x*5)
-    myFrames = getFrames(dataFiltered)
-    myFramesFFT = myFrames.map(x=>FFT({real:x, imag:[]},0,1024).real.map(x=>x/1024))
-    myFramesFFTA = myFrames.map(x=>Amplitude(FFT({real:x, imag:[]},0,1024)))
-    myFramesMF = myFramesFFTA.map(x=>melFilter(20,x,300,3000))
-    myFramesMFL = myFramesMF.map(x=>x.map(y=>Math.log(y)/20))
-    myFramesMFCC = myFramesMFL.map(x=>DCT(x).slice(1,13))
-})
 
+
+
+var mp3handler = function(callback){
+    return function(audioBuffer){
+        data = audioBuffer.getChannelData(0)
+        dataFiltered = myFilter([1,-0.98], [1], data).map(x=>x*5)
+        myFrames = getFrames(dataFiltered)
+        myFramesFFT = myFrames.map(x=>FFT({real:x, imag:[]},0,1024).real.map(x=>x/1024))
+        myFramesFFTA = myFrames.map(x=>Amplitude(FFT({real:x, imag:[]},0,1024)))
+        myFramesMF = myFramesFFTA.map(x=>melFilter(32,x,300,3000))
+        myFramesMFL = myFramesMF.map(x=>x.map(y=>Math.log(y)/20))
+        myFramesMFCC = myFramesMFL.map(x=>DCT(x).slice(1,13))
+        callback()
+    }
+}
+readAudioBuffer(__dirname +"/082-Sec3.mp3",mp3handler(function(){
+    upArea.draw2DColor(myFramesMFCC)
+}))
+readAudioBuffer(__dirname +"/poi.mp3",mp3handler(function(){
+    downArea.draw2DColor(myFramesMFCC)
+}))
 
 function myFilter(B,A,X){
     var Y = new Float32Array(X.length)
@@ -147,29 +161,32 @@ function melFilter(m, F, low, hi){
             if (k < Fs[j-1]) continue
             if (k > Fs[j+1]) continue
             if (k < Fs[j]){
-                res[j-1] += F[i]*F[i]*2*(k-Fs[j-1])/((Fs[j]-Fs[j-1])*(Fs[j+1]-Fs[j-1]))*dk*10
+                res[j-1] += F[i]*F[i]*2*(k-Fs[j-1])/((Fs[j]-Fs[j-1])*(Fs[j+1]-Fs[j-1]))*dk
             }else{
-                res[j-1] += F[i]*F[i]*2*(Fs[j+1]-k)/((Fs[j+1]-Fs[j])*(Fs[j+1]-Fs[j-1]))*dk*10
+                res[j-1] += F[i]*F[i]*2*(Fs[j+1]-k)/((Fs[j+1]-Fs[j])*(Fs[j+1]-Fs[j-1]))*dk
             }           
         }
     }
     return res
 }
 
-function kroneker(i,j){
-    return i==j ? 1 : 0
-}
+var testSig = [1,2,3,4,5,6,7,8,2,3,4,5,6,7,8,9]
 
 function DCT(sig){
     var n = sig.length
-    var ret = new Float32Array(n)
-    var sqrtN = Math.sqrt(2/n)
+    var ret = new Float32Array(n)    
     var tic = Math.PI/n/2
     for (var i=0; i<n; i++){
         for(var j=0; j<n; j++){
             var k = j*(2*i+1)
-            ret[j] += sig[i]*Math.cos(k*tic)/Math.sqrt(1+kroneker(0,j))*sqrtN
+            ret[j] += sig[i]*Math.cos(k*tic)
         }
+    }
+    //orthogonalization
+    ret[0] *= Math.SQRT1_2
+    var sqrtN = Math.sqrt(2/n)
+    for (var j=0; j<n; j++){
+        ret[j] *= sqrtN
     }    
     return ret
 }
@@ -179,18 +196,27 @@ function IDCT(sig){
     var ret = new Float32Array(n)
     var sqrtN = Math.sqrt(2/n)
     var tic = Math.PI/n/2
-    for (var i=0; i<n; i++){
+    //for orthogonalizated
+    for (var j=0; j<n; j++){        
+        ret[j] = sig[0]*Math.SQRT1_2
+    }
+    for (var i=1; i<n; i++){
         for(var j=0; j<n; j++){
             var k = i*(2*j+1)
-            ret[j] += sig[i]*Math.cos(k*tic)/Math.sqrt(1+kroneker(0,i))*sqrtN
+            ret[j] += sig[i]*Math.cos(k*tic)
         }
+    }    
+    //orthogonalization
+    var sqrtN = Math.sqrt(2/n)
+    for (var j=0; j<n; j++){
+        ret[j] *= sqrtN
     }
     return ret
 }
 
-testSig = [1,2,3,4,5,6,7]
-dctSig = DCT(testSig)
-idctSig = IDCT(dctSig)
+
+var dctSig = DCT(testSig)
+var idctSig = IDCT(dctSig)
 
 var tempFFT = {}
 var c = 0
@@ -198,7 +224,7 @@ function Type2DCTusingFFT(sig){
     var n = 1 << Math.ceil(Math.log2(sig.length))    
     var nn = n * 4
     var m = sig.length
-    var ret = new Float32Array(m)
+    var ret = new Float32Array(n)
     var _real = new Float32Array(nn)
     for(var i=0; i<n;i++){
         _real[i*2] = 0
@@ -209,7 +235,7 @@ function Type2DCTusingFFT(sig){
     var temp = FFT({real:_real,imag:[]},0,nn).real
     tempFFT[c++] = temp
     a = Math.sqrt(2/nn)
-    for(var j=0; j<m; j++){
+    for(var j=0; j<n; j++){
         ret[j] = a * temp[j]
     }
     ret[0] /= Math.sqrt(2)
@@ -221,7 +247,7 @@ function Type2IDCTusingIFFT(sig){
     var n = 1 << Math.ceil(Math.log2(sig.length))    
     var nn = n * 4
     var m = sig.length
-    var ret = new Float32Array(m)
+    var ret = new Float32Array(n)
     var _real = new Float32Array(nn)   
 
     for(var i=0; i<n;i++){
@@ -236,14 +262,14 @@ function Type2IDCTusingIFFT(sig){
     var temp = IFFT({real:_real,imag:[]},0,nn).real
     tempFFT[c++] = temp
     a = Math.sqrt(2/nn)
-    for(var j=0; j<m; j++){
+    for(var j=0; j<n; j++){
         ret[j] = temp[2*j+1]/a
     }
     return ret
 }
 
-dct = Type2DCTusingFFT(testSig)
-idct = Type2IDCTusingIFFT(dct)
+var dctSig2 = Type2DCTusingFFT(testSig)
+var idctSig2 = Type2IDCTusingIFFT(dctSig2)
 
 
 /*
@@ -258,3 +284,26 @@ idct = Type2IDCTusingIFFT(dct)
  
 
 */
+
+function draw2DColor(data, ctx, area){
+    var dx = area.w / data.length
+    var dy = area.h / data[0].length
+    
+    for (var i=0; i<data.length; i++){
+        var line = data[i]
+        for(var j=0; j<line.length; j++){
+            ctx.beginPath()
+            ctx.rect(area.x+dx * i-0.5, area.y+dy * j -0.5,dx+1,dy+1)
+            ctx.fillStyle = getStyle(line[j])
+            ctx.fill()
+        }
+    }
+}
+function getStyle(x){
+    if (x < 1 )
+        return "rgb(128,"+Math.floor(128+x*128)+",128)"
+    else if (x < 2)
+        return "rgb("+Math.floor(x*128)+",255,128)"
+    else 
+        return "rgb(255,"+Math.floor((4-x)*128)+",128)"
+}
