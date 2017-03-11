@@ -1,6 +1,6 @@
 var fs = require("fs")
 var drawing = require("../../lib/drawing")
-var {FFT, Amplitude} = require("../../lib/fft")
+var {FFT, IFFT, Amplitude} = require("../../lib/fft")
 var audioContext = new AudioContext()
 var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
@@ -156,26 +156,44 @@ function melFilter(m, F, low, hi){
     return res
 }
 
+function kroneker(i,j){
+    return i==j ? 1 : 0
+}
+
 function DCT(sig){
     var n = sig.length
-    var m = n
-    var ret = new Float32Array(m)
+    var ret = new Float32Array(n)
+    var sqrtN = Math.sqrt(2/n)
+    var tic = Math.PI/n/2
     for (var i=0; i<n; i++){
-        for(var j=0; j<m; j++){
-            ret[j] += sig[i]*Math.cos(j*(i+0.5)*Math.PI/n)
+        for(var j=0; j<n; j++){
+            var k = j*(2*i+1)
+            ret[j] += sig[i]*Math.cos(k*tic)/Math.sqrt(1+kroneker(0,j))*sqrtN
         }
-    }
-    a = Math.sqrt(2/n)
-    for(var j=0; j<m; j++){
-        ret[j] *= a 
-    }
-    ret[0] = ret[0]/Math.sqrt(2)
-    
+    }    
     return ret
 }
-testSig = [1,2,3,4,5,6,7,8]
-dctSig = DCT(testSig)
 
+function IDCT(sig){
+    var n = sig.length
+    var ret = new Float32Array(n)
+    var sqrtN = Math.sqrt(2/n)
+    var tic = Math.PI/n/2
+    for (var i=0; i<n; i++){
+        for(var j=0; j<n; j++){
+            var k = i*(2*j+1)
+            ret[j] += sig[i]*Math.cos(k*tic)/Math.sqrt(1+kroneker(0,i))*sqrtN
+        }
+    }
+    return ret
+}
+
+testSig = [1,2,3,4,5,6,7]
+dctSig = DCT(testSig)
+idctSig = IDCT(dctSig)
+
+var tempFFT = {}
+var c = 0
 function Type2DCTusingFFT(sig){
     var n = 1 << Math.ceil(Math.log2(sig.length))    
     var nn = n * 4
@@ -189,12 +207,54 @@ function Type2DCTusingFFT(sig){
         _real[nn-2*i-1] = sig[i] || 0
     }
     var temp = FFT({real:_real,imag:[]},0,nn).real
-
+    tempFFT[c++] = temp
     a = Math.sqrt(2/nn)
     for(var j=0; j<m; j++){
         ret[j] = a * temp[j]
     }
-    ret[0] = ret[0]/Math.sqrt(2)
+    ret[0] /= Math.sqrt(2)
     
     return ret
 }
+
+function Type2IDCTusingIFFT(sig){
+    var n = 1 << Math.ceil(Math.log2(sig.length))    
+    var nn = n * 4
+    var m = sig.length
+    var ret = new Float32Array(m)
+    var _real = new Float32Array(nn)   
+
+    for(var i=0; i<n;i++){
+        _real[i] = sig[i] || 0
+        _real[n*2 - i - 1] = -sig[i+1] || 0
+        _real[n*2 + i] = -sig[i] || 0
+        _real[n*4 - i - 1] = sig[i+1] || 0
+    }
+    _real[0] *=  Math.sqrt(2)
+    _real[n*2] *=  Math.sqrt(2)
+    
+    var temp = IFFT({real:_real,imag:[]},0,nn).real
+    tempFFT[c++] = temp
+    a = Math.sqrt(2/nn)
+    for(var j=0; j<m; j++){
+        ret[j] = temp[2*j+1]/a
+    }
+    return ret
+}
+
+dct = Type2DCTusingFFT(testSig)
+idct = Type2IDCTusingIFFT(dct)
+
+
+/*
+
+[a, b, c, d] 
+(DCT) => 
+[A, B, C, D]
+
+[0, a, 0, b, 0,  c,  0,  d,  0,  d,  0,  c, 0, b, 0, a]
+(FFT) =>
+[A, B, C, D, 0, -D, -C, -B, -A, -B, -C, -D, 0, D, C, B]
+ 
+
+*/
