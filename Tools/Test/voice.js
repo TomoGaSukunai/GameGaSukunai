@@ -99,24 +99,36 @@ var myFramesMFCC
 
 
 
-var mp3handler = function(callback){
+var mfccHandler = function(callback){
     return function(audioBuffer){
         data = audioBuffer.getChannelData(0)
-        dataFiltered = myFilter([1,-0.98], [1], data).map(x=>x*5)
+        dataFiltered = myFilter([1,-0.98], [1], data)//.map(x=>x*5)
         myFrames = getFrames(dataFiltered)
-        myFramesFFT = myFrames.map(x=>FFT({real:x, imag:[]},0,1024).real.map(x=>x/1024))
+        //myFramesFFT = myFrames.map(x=>FFT({real:x, imag:[]},0,1024).real.map(x=>x/1024))
         myFramesFFTA = myFrames.map(x=>Amplitude(FFT({real:x, imag:[]},0,1024)))
         myFramesMF = myFramesFFTA.map(x=>melFilter(32,x,300,3000))
-        myFramesMFL = myFramesMF.map(x=>x.map(y=>Math.log(y)/20))
+        myFramesMFL = myFramesMF.map(x=>x.map(y=>Math.log(y)/10))
         myFramesMFCC = myFramesMFL.map(x=>DCT(x).slice(1,13))
         callback()
     }
 }
-readAudioBuffer(__dirname +"/082-Sec3.mp3",mp3handler(function(){
+var sec1 = {}
+var poi = {}
+readAudioBuffer(__dirname +"/082-Sec3.mp3",mfccHandler(function(){
     upArea.draw2DColor(myFramesMFCC)
+    upArea.drawFloatsRow(myFrames.map(x=>frameEnergy(x)).map(x=>x>0?Math.log(x)/50:-0.95))
+    myFramesMFCC.map((x,i)=>drawing.drawFloatsCol(x,ctx,canvasArea.getSubArea(myFramesMFCC.length,2,i,0)))
+    sec1.MFCC = myFramesMFCC
+    sec1.energy = myFrames.map(x=>frameEnergy(x))
+    dtw()
 }))
-readAudioBuffer(__dirname +"/poi.mp3",mp3handler(function(){
+readAudioBuffer(__dirname +"/poi.mp3",mfccHandler(function(){
     downArea.draw2DColor(myFramesMFCC)
+    downArea.drawFloatsRow(myFrames.map(x=>frameEnergy(x)).map(x=>x>0?Math.log(x)/50:-0.95))
+    myFramesMFCC.map((x,i)=>drawing.drawFloatsCol(x,ctx,canvasArea.getSubArea(myFramesMFCC.length,2,i,1)))
+    poi.MFCC = myFramesMFCC
+    poi.energy = myFrames.map(x=>frameEnergy(x))
+    dtw()
 }))
 
 function myFilter(B,A,X){
@@ -306,4 +318,88 @@ function getStyle(x){
         return "rgb("+Math.floor(x*128)+",255,128)"
     else 
         return "rgb(255,"+Math.floor((4-x)*128)+",128)"
+}
+
+function dist2(A,B){
+    var n = A.length
+    var d = 0
+    var a = 0
+    for(var i=0; i<n ;i++){
+        a = (A[i]-B[i])
+        d += a*a
+    }
+    return Math.sqrt(d)
+}
+function cosDist(A,B){
+    var n = A.length
+    var d = 0
+    var a = 0
+    var b = 0
+    for(var i=0; i<n ;i++){
+        d += A[i]*B[i]
+        a += A[i]*A[i]
+        b += B[i]*B[i]
+    }
+    return 1 - d/Math.sqrt(a*b)
+}
+
+function frameEnergy(frame){
+    var n = frame.length
+    var e = 0
+    for(var i=0; i<n; i++){
+        e += frame[i]*frame[i]
+    }
+    return e/n
+}
+
+
+
+//DTW
+
+var n = 2
+function dtw(){    
+    if (--n) return
+    
+    //silence cut
+    var poiSegs = silenceCut(poi)[0]
+    var sec1Segs = silenceCut(sec1)
+
+    for (var j in sec1Segs){
+        var seg = sec1Segs[j]
+        for(var i in seg){
+            if (cosDist(seg[i], poiSegs[10]) < 0.3){
+                console.log("cs:"+j+":"+i)
+            }
+            if (cosDist(seg[i], poiSegs[poiSegs.length-1]) < 0.3){
+                console.log("ce:"+j+":"+i)
+            }
+        }
+    }
+
+
+    return 
+}
+
+function silenceCut(sec){
+    var sil = true
+    var lastSil = sil
+    var seg = []
+    var segs = []
+    for (var i in sec.energy){
+        lastSil = sil
+        sil = sec.energy[i] < 1e-11
+        if (sil && !lastSil){
+            segs.push(seg)
+        }
+        if (!sil){
+            if(lastSil){
+                seg = []
+            }
+            seg.push(sec.MFCC[i])         
+        }
+    }
+    if (!lastSil){
+        segs.push(seg)        
+    }
+    return segs
 }
