@@ -114,7 +114,7 @@ var mfccHandler = function(callback){
 }
 var sec1 = {}
 var poi = {}
-readAudioBuffer(__dirname +"/082-Sec3.mp3",mfccHandler(function(){
+readAudioBuffer(__dirname +"/082-ConstComplete.mp3",mfccHandler(function(){
     upArea.draw2DColor(myFramesMFCC)
     upArea.drawFloatsRow(myFrames.map(x=>frameEnergy(x)).map(x=>x>0?Math.log(x)/50:-0.95))
     myFramesMFCC.map((x,i)=>drawing.drawFloatsCol(x,ctx,canvasArea.getSubArea(myFramesMFCC.length,2,i,0)))
@@ -356,7 +356,7 @@ function frameEnergy(frame){
 
 //DTW
 
-var n = 2
+var n = 3
 function dtw(){    
     if (--n) return
     
@@ -364,18 +364,33 @@ function dtw(){
     var poiSegs = silenceCut(poi)[0]
     var sec1Segs = silenceCut(sec1)
 
-    for (var j in sec1Segs){
-        var seg = sec1Segs[j]
-        for(var i in seg){
-            if (cosDist(seg[i], poiSegs[10]) < 0.3){
-                console.log("cs:"+j+":"+i)
-            }
-            if (cosDist(seg[i], poiSegs[poiSegs.length-1]) < 0.3){
-                console.log("ce:"+j+":"+i)
-            }
-        }
-    }
 
+    drawing.clearArea(ctx,canvasArea.getHoleArea())
+    var si = 0
+
+    var sL = sec1Segs[si].length
+    var pL = poiSegs.length
+    var vc = 12*3
+    var mainW = canvas.width - vc
+    var mainH = canvas.height - vc
+
+    var mainArea = {x:0,y:0,w:mainW,h:mainH}
+    var secArea = {x:0,y:mainH,w:mainW,h:vc}
+    var poiArea = {x:mainW,y:0,w:vc,h:mainH}
+
+    var poiData = poiSegs[0].reduce((a,b,i)=>{a.push(poiSegs.map(y=>y[i]));/*console.log(a);*/ return a},[])
+    var secData = sec1Segs[si]
+    var mainData = []
+    for (var i=0;i<sL;i++){
+        var col = []
+        for(var j=0;j<pL;j++){
+            col[j] = cosDist(poiSegs[j],sec1Segs[si][i])*1.5
+        }
+        mainData[i] = col
+    }
+    draw2DColor(mainData,ctx,mainArea)
+    draw2DColor(poiData,ctx,poiArea)
+    draw2DColor(secData,ctx,secArea)    
 
     return 
 }
@@ -398,8 +413,12 @@ function silenceCut(sec){
             seg.push(sec.MFCC[i])         
         }
     }
+    lastSil = sil    
     if (!lastSil){
         segs.push(seg)        
     }
     return segs
 }
+
+
+
