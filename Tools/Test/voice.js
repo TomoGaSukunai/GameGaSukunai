@@ -112,9 +112,20 @@ var mfccHandler = function(callback){
         callback()
     }
 }
+
+
 var sec1 = {}
 var poi = {}
-readAudioBuffer(__dirname +"/082-ConstComplete.mp3",mfccHandler(function(){
+var mp3s = ["082-ConstComplete.mp3",
+            "082-DockMedDmg.mp3",
+            "082-Return.mp3",
+            "082-Sec1.mp3",
+            "082-Sec3.mp3",
+            "144-Atk2.mp3",]
+
+var imp3 = 4
+var si = (imp3 == 4 ?2:0)
+readAudioBuffer(__dirname +"/"+mp3s[imp3],mfccHandler(function(){
     upArea.draw2DColor(myFramesMFCC)
     upArea.drawFloatsRow(myFrames.map(x=>frameEnergy(x)).map(x=>x>0?Math.log(x)/50:-0.95))
     myFramesMFCC.map((x,i)=>drawing.drawFloatsCol(x,ctx,canvasArea.getSubArea(myFramesMFCC.length,2,i,0)))
@@ -356,7 +367,7 @@ function frameEnergy(frame){
 
 //DTW
 
-var n = 3
+var n = 2
 function dtw(){    
     if (--n) return
     
@@ -366,7 +377,6 @@ function dtw(){
 
 
     drawing.clearArea(ctx,canvasArea.getHoleArea())
-    var si = 0
 
     var sL = sec1Segs[si].length
     var pL = poiSegs.length
@@ -392,8 +402,65 @@ function dtw(){
     draw2DColor(poiData,ctx,poiArea)
     draw2DColor(secData,ctx,secArea)    
 
+    //serach ,main (0,0)-> (sL,pL)
+    var minD = []
+    var dic = []
+    var dics = {
+        i: [-1,0],
+        j: [0,-1],
+        ij: [-1,-1],       
+    }
+
+    for (var i=0;i<sL;i++){
+        minD[i] = []
+        dic[i] = []
+    }
+
+    minD[0][0] = mainData[0][0]
+    for (var j=1;j<pL;j++){
+        minD[0][j] = minD[0][j-1] + mainData[0][j]
+        dic[0][j] = dics.j
+    }
+    for (var i=1;i<sL;i++){
+        minD[i][0] = minD[i-1][0] +0.5// mainData[i][0]        
+        dic[i][0] = dics.i
+        for(var j=1;j<pL;j++){
+            var min = Infinity
+            var md
+            for (var ii in dics){
+                var d = dics[ii]
+                var t = minD[i+d[0]][j+d[1]]
+                if (min > t){
+                    min = t
+                    md = d
+                }
+            }
+            minD[i][j] = mainData[i][j] + min
+            dic[i][j] = md
+        }
+    }
+
+    
+    var path = [[sL-1,pL-1]]
+    for (var x=sL-1,y=pL-1; x>0 || y>0; ){        
+        var d = dic[x][y]
+        x+=d[0]
+        y+=d[1]
+        path.push([x,y])
+    }
+    //console.log(path)
+    var dx = mainW/sL
+    var dy = mainH/pL
+    ctx.beginPath()
+    for (var p of path){
+        ctx.lineTo(dx*(p[0]+0.5),dy*(p[1]+0.5))
+    }
+    ctx.strokeStyle="#000000"
+    ctx.stroke()
+    console.log(minD[sL-1][pL-1])
     return 
 }
+
 
 function silenceCut(sec){
     var sil = true
@@ -419,6 +486,4 @@ function silenceCut(sec){
     }
     return segs
 }
-
-
 
