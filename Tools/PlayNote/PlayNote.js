@@ -44,12 +44,12 @@ var anylser = audioContext.createAnalyser()
 anylser.connect(audioContext.destination)
 anylser.fftSize = 1024
 var anaF = new Uint8Array(anylser.frequencyBinCount/8)
+var area = canvasArea.getRow(2,0)
 
 function drawFreq(){
     requestAnimationFrame(drawFreq)
 
-    anylser.getByteFrequencyData(anaF)
-    var area = canvasArea.getRow(2,0)
+    anylser.getByteFrequencyData(anaF)    
     drawing.clearArea(ctx, area)
     drawing.drawByteBars(anaF, ctx, area)
     //console.log(anaF.reduce((a,b)=>Math.max(a,b)))

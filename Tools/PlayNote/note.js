@@ -50,9 +50,9 @@ const EnvelopeADSR = class{
         this.ts = [attack, decay, sustain, release, Infinity]
         this.gs = [
             (t) => t/attack,
-            (t) => 1 - t/decay/4,
-            (t) => 3/4,
-            (t) => 3/4 *(1-t/release),
+            (t) => 1 - t/decay/4 *2,
+            (t) => 2/4,
+            (t) => 2/4 *(1-t/release),
             (t) => 0,
         ]
         this.memo = {}
