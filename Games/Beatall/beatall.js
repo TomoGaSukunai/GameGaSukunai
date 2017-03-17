@@ -154,10 +154,15 @@ function main(){
         }
     }
     
-    if (poped < 1){
-        var idx  = Math.floor(Math.random()*theHoles.length)
+    if (now > popDelta + popStamp){        
+        var idx
+        do {
+            idx = Math.floor(Math.random()*theHoles.length)
+        }while(theHoles[idx].isPop)            
+        
         theHoles[idx].pop()
-        poped++ 
+        poped++
+        popStamp = now
     }
     clickState.f = false
     manager.render()
@@ -166,4 +171,6 @@ function main(){
 manager.addLayer(gameLayer)
 var poped = 0
 var score = 0
+var popStamp = Date.now()
+var popDelta = 700
 main()
