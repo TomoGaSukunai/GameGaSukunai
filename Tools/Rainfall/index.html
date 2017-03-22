@@ -1,0 +1,33 @@
+<meta charset="utf-8">
+<html>
+    <script id="shader-fs" type="x-shader/x-fragment">
+        void main(void) {
+            gl_FragColor = vec4(0.1, 0.0, 0.0, 0.1);
+        }
+    </script>
+
+    <script id="shader-vs" type="x-shader/x-vertex">
+        attribute vec2 coordinates;
+        void main(void){
+            gl_Position = vec4(coordinates, 0.0, 1.0);   
+            gl_PointSize = 10.0;         
+        }
+    </script>
+    <title>WebGL</title>
+    <style>
+    body, canvas
+    {
+        display: block;
+        padding: 0px;
+        margin: 0px;
+    }
+    </style>
+
+    <body>
+        <canvas id="gaming" width="640" height="480">
+        </canvas>        
+    </body>
+    <script src="rainfall.js">
+    </script>
+
+</html>
