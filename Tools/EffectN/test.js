@@ -109,24 +109,24 @@ audioContext.decodeAudioData(data1.buffer,function(buff){
     hamSigs = getFrames(sig, step, hamWin)
     recSigs = getFrames(sig, step, rectWin)
 
-    //get energy-time curve from framing
+    // get energy-time curve from framing
     hamEng = hamSigs.map(x=>getEngergy(x))//.map(x=>Math.log(x)/20)
     recEng = recSigs.map(x=>getEngergy(x))//.map(x=>Math.log(x)/20)
 
-    //origin energy-time curve
-    //downArea.drawFloatsRow(recEng)
+    // origin energy-time curve
+    // downArea.drawFloatsRow(recEng)
     
-    //smoothed energy-time curve with dct
+    // smoothed energy-time curve with dct
     smoothed = smoothen(recEng,36)
-    //ctx.strokeStyle = "rgb(255,128,128)"
-    //downArea.drawFloatsRow(smoothed)
-    //upArea.drawFloatsRow(smoothed)
+    // ctx.strokeStyle = "rgb(255,128,128)"
+    // downArea.drawFloatsRow(smoothed)
+    // upArea.drawFloatsRow(smoothed)
     
     // ADSR model to approach the origin curve
     myADSR = new ADSR (0.008, 0.017, 0.05, 0.05, 0.425, 0.2)
     adsrSeq = myADSR.seq(recEng.length, buff.duration)
-    //ctx.strokeStyle = "rgb(128,255,255)"
-    //downArea.drawFloatsRow(adsrSeq)
+    // ctx.strokeStyle = "rgb(128,255,255)"
+    // downArea.drawFloatsRow(adsrSeq)
 
     diff = adsrSeq.map((x,i)=>x - recEng[i])
 
@@ -146,7 +146,23 @@ audioContext.decodeAudioData(data1.buffer,function(buff){
     ctx.stroke()
 
 
+
+    curve = create2X(-2,20,100)
 })
+
+function drawCurve(curve){
+    ctx.beginPath()
+    for (var i = 0; i < 640; i++){
+        ctx.lineTo(i,curve(i))
+    }
+    ctx.stroke()
+}
+
+function create2X(a,b,c){
+    return function (x){
+        return a*(x-b)*x + c 
+    }
+}
 
 // centerify mean by ignore freq dist < max * ptg
 function getMeanIndex(data, ptg = 0){
