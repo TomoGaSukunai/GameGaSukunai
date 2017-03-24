@@ -10,9 +10,9 @@ var canvas = document.getElementById("gaming")
 var ctx = canvas.getContext("2d")
 
 var canvasArea = new drawing.CanvasArea(canvas)
-
-var upArea = bindArea(canvasArea.getRow(2,0),ctx)
-var downArea = bindArea(canvasArea.getRow(2,1),ctx)
+var holeArea = bindArea(canvasArea.getHoleArea(), ctx)
+var upArea = bindArea(canvasArea.getRow(2,0), ctx)
+var downArea = bindArea(canvasArea.getRow(2,1), ctx)
 
 function bindArea(area, ctx){
     var keys = {
@@ -138,6 +138,9 @@ function IDCT(sig){
     return ret
 }
 function ADSR(attack, decay, sustain, release, peak, hold){
+    var p = 1.0/2.0
+    var a = hold /Math.pow(release,p)
+
     this.f = [
         // during attack, mag increases from 0 to peak
         (t) => t/attack * peak,
@@ -146,12 +149,12 @@ function ADSR(attack, decay, sustain, release, peak, hold){
         // during sustain, mag hold on hold
         (t) => hold,
         // during release, mag falls from hold to 0
-        (t) => (1 - t/release) * hold,
+        (t) => - a * Math.pow(t,p) + hold,
         // a func to cover t > duration
         (t) => 0,
     ]
     this.dt = [attack, decay, sustain, release]
-    this.ft = [...this.dt, Infinity]
+    this.ft = [attack, decay, sustain, release, Infinity]
     this.duration = this.dt.reduce((a,b)=>a+b)
     this.seq = function(n, t){
         var dt = t/(n-1)
@@ -180,14 +183,6 @@ function getTFDrawer(nframes){
     }
 }
 
-var step = 128
-var len = 128
-var minE = 1e-8
-var hamWin = HammingWindow(len,0.46)
-var rectWin = hamWin.map(x=>1);
-var sig
-var mySig
-
 function energySignal(frames){    
     // get energy-time curve from framing
     energies = frames.map(x=>getEngergy(x))    
@@ -203,11 +198,11 @@ function energySignal(frames){
 
     //diff = adsrSeq.map((x,i)=>x - recEng[i])
 }
-function energyADSR(ADSR, n, duration){
-    var adsrSeq = ADSR.seq(n, duration)
+function energyADSR(adsr, n = __nf, duration = __ds){
+    var adsrSeq = adsr.seq(n, duration)
     ctx.strokeStyle = "rgb(128,255,255)"
     downArea.drawFloatsRow(adsrSeq)
-
+    upArea.drawFloatsRow(adsrSeq)
 }
 function timeFreqSignal(frames){
     // fft on frames
@@ -231,7 +226,7 @@ function timeFreqSignal(frames){
     getTFDrawer(frames.length)(tf_curve)
 
 }
-function timeFreqCurve(curve, n, duration){
+function timeFreqCurve(curve, n = __nf, duration = __ds){
     var tf_curve = []
     for(var t=0; t<duration; t+=0.0001){
        f = curve(t)
@@ -240,58 +235,99 @@ function timeFreqCurve(curve, n, duration){
     ctx.strokeStyle = "#ee00ee"
     getTFDrawer(n)(tf_curve)
 }
-
-var myCurve = (x)=> x > 0.0875? 1480*2:2*1624070*x*x*x+392*2
-var myADSR = new ADSR (0.008, 0.017, 0.05, 0.05, 0.425, 0.2)
-var nn = myADSR.duration * audioContext.sampleRate
-mySig = new Float32Array(nn)
-var envlope = myADSR.seq(nn,myADSR.duration)
-var dt = 1 / audioContext.sampleRate
-var phase = 0
-for (var i=0; i<nn; i++){
-   var t = dt * i
-   var f = myCurve(t)
-   phase = phase + dt*f*2*Math.PI
-   mySig[i] = Math.sqrt(envlope[i]) * Math.sin(phase) * Math.SQRT2
-   
+function createEffect(adsr, curve){
+    var nn = adsr.duration * audioContext.sampleRate
+    var effect = new Float32Array(nn)
+    var envlope = adsr.seq(nn,adsr.duration)
+    var dt = 1 / audioContext.sampleRate
+    var phase = 0
+    for (var i=0; i<nn; i++){
+        var t = dt * i
+        var f = curve(t)
+        phase = phase + dt*f*2*Math.PI
+        effect[i] = Math.sqrt(envlope[i]) * Math.sin(phase) * Math.SQRT2        
+    }    
+    return effect
 }
-//playData(createSig)
-
-
-
-function energyAnalysis(sig){
-    
+function energyAnalysis(sig, adsr){  
     // framing
     var frames = getFrames(sig, step, rectWin)
     energySignal(frames)
-    
+    __nf = frames.length
+    __ds = sig.length/audioContext.sampleRate
     // ADSR model to approach the origin curve
-    var myADSR = new ADSR (0.008, 0.017, 0.05, 0.05, 0.425, 0.2)    
-    energyADSR(myADSR, frames.length, sig.length / audioContext.sampleRate)
+    //var adsr = new ADSR (0.008, 0.017, 0.05, 0.05, 0.425, 0.2)    
+    if (adsr !== undefined)
+        energyADSR(adsr, frames.length, sig.length / audioContext.sampleRate)
 }
 
-function timeFreqAnalysis(sig){
+function timeFreqAnalysis(sig, curve){
     // framing
-    frames = getFrames(sig, step, hamWin)
+    var frames = getFrames(sig, step, hamWin)
     timeFreqSignal(frames)
+    __nf = frames.length
+    __ds = sig.length/audioContext.sampleRate
     // An x3 model to approach the origin curve    
-    var myCurve = (x)=> x > 0.0875? 1480*2:2*1624070*x*x*x+392*2
-    timeFreqCurve(myCurve, frames.length, myADSR.duration)
+    //var curve = (x)=> x > 0.0875? 1480*2:2*1624070*x*x*x+392*2
+    if (curve !== undefined)
+        timeFreqCurve(curve, frames.length, sig.length / audioContext.sampleRate)
 }
 
-/*
-audioContext.decodeAudioData(data1.buffer, function(buff){
-    sig = buff.getChannelData(0)
-    //energyAnalysis(sig)
-    //timeFreqAnalysis(sig)
-})
-*/
 
-function analysisPlan(analysis){
+function analysisPlan(analysis, para){
     return function plan(buff){
         sig = buff.getChannelData(0)
-        analysis(sig)
+        analysis(sig, para)
     }
 }
+
+
+var step = 128
+var len = 128
+var minE = 1e-8
+var hamWin = HammingWindow(len,0.46)
+var rectWin = hamWin.map(x=>1);
+var sig1
+var sig2
+var __nf = 0
+var __ds = 0
+
+var createCurve = (f1,f2,t)=>{
+    var a = (f2-f1)/t/t/t
+    return (x)=> x > t ?f2 :f1 + a*x*x*x
+}
+//my effect approach from data
+//var myCurve1 = (x)=> x > 0.0875? 3000:3313834*x*x*x+750
+var myCurve1 = createCurve(750, 3000, 0.0875)
+var myADSR1 = new ADSR (0.008, 0.017, 0.055, 0.05, 0.425, 0.2)
+var myEffect1 = createEffect(myADSR1, myCurve1)
+//playData(myEffect1)
+
+var myADSR2 = new ADSR(0.008, 0.017, 0.07, 0.07, 0.425, 0.325)
+//var myCurve2 = (x)=> x > 0.075? 3136: 5223514*x*x*x+932.33
+var myCurve2 = createCurve(960, 3100, 0.075)
+var myEffect2 = createEffect(myADSR2, myCurve2)
+//playData(myEffect2)
+
+audioContext.decodeAudioData(data1.buffer, function(buff){
+    sig1 = buff.getChannelData(0)
+    //energyAnalysis(sig1, myADSR1)
+    //timeFreqAnalysis(sig1, myCurve1)
+
+    //compareSig(sig1, myEffect1, 4000, 5000)
+})
+audioContext.decodeAudioData(data2.buffer, function(buff){
+    sig2 = buff.getChannelData(0)
+    //energyAnalysis(sig2, myADSR2)
+    timeFreqAnalysis(sig2, myCurve2)
+})
 //
 // audioContext.decodeAudioData(data1.buffer,analysisPlan(timeFreqAnalysis))
+
+function compareSig(s1, s2, s, e){
+    ctx.strokeStyle = "#006600"
+    holeArea.redrawFloatsRow(s1.slice(s,e))
+    ctx.strokeStyle = "#660000"
+    holeArea.drawFloatsRow(s2.slice(s,e))
+}
+
