@@ -11,7 +11,10 @@ var ctx = canvas.getContext("2d")
 
 var canvasArea = new drawing.CanvasArea(canvas)
 
-var bindArea = function(area, ctx){
+var upArea = bindArea(canvasArea.getRow(2,0),ctx)
+var downArea = bindArea(canvasArea.getRow(2,1),ctx)
+
+function bindArea(area, ctx){
     var keys = {
         drawFloatsRow: true,
         drawFloatsCol: true,
@@ -46,12 +49,7 @@ var bindArea = function(area, ctx){
     }
     return da
 }
-
-var upArea = bindArea(canvasArea.getRow(2,0),ctx)
-var downArea = bindArea(canvasArea.getRow(2,1),ctx)
-
 function playData(data){
-
     var buffer = audioContext.createBuffer(1,data.length,audioContext.sampleRate)
     var signal = buffer.getChannelData(0)
     for (var i=0;i<data.length;i++){
@@ -87,83 +85,6 @@ function getFrames(sig, step, win){
     }
     return ret
 }
-
-var step = 128
-var len = 128
-var minE = 1e-8
-var hamWin = HammingWindow(len,0.46)
-var rectWin = hamWin.map(x=>1);
-var sig
-
-var hamSigs
-var recSigs
-
-var hamEng
-var recEng
-
-audioContext.decodeAudioData(data1.buffer,function(buff){    
-    
-    sig = buff.getChannelData(0)
-    
-    //framing
-    hamSigs = getFrames(sig, step, hamWin)
-    recSigs = getFrames(sig, step, rectWin)
-
-    // get energy-time curve from framing
-    hamEng = hamSigs.map(x=>getEngergy(x))//.map(x=>Math.log(x)/20)
-    recEng = recSigs.map(x=>getEngergy(x))//.map(x=>Math.log(x)/20)
-
-    // origin energy-time curve
-    // downArea.drawFloatsRow(recEng)
-    
-    // smoothed energy-time curve with dct
-    smoothed = smoothen(recEng,36)
-    // ctx.strokeStyle = "rgb(255,128,128)"
-    // downArea.drawFloatsRow(smoothed)
-    // upArea.drawFloatsRow(smoothed)
-    
-    // ADSR model to approach the origin curve
-    myADSR = new ADSR (0.008, 0.017, 0.05, 0.05, 0.425, 0.2)
-    adsrSeq = myADSR.seq(recEng.length, buff.duration)
-    // ctx.strokeStyle = "rgb(128,255,255)"
-    // downArea.drawFloatsRow(adsrSeq)
-
-    diff = adsrSeq.map((x,i)=>x - recEng[i])
-
-    // fft on frames
-    amps = hamSigs.map(x=> Amplitude(FFT({real:x,imag:[]},0,len)))
-
-    //freq - time 
-    ctx.strokeStyle = "rgb(128,128,128)"
-    amps.map((x,i)=>drawing.drawFloatsRow(x.map(y=>y*4),ctx,canvasArea.getRow(amps.length,i)))
-
-    //find domain freq of frame with mean 
-    means = amps.map(x=>getMeanIndex(x, 0.01))
-
-    //
-    ctx.beginPath()
-    means.map((a,i)=>ctx.lineTo(a/len*2*canvas.width,(i+0.5)/amps.length*canvas.height))
-    ctx.stroke()
-
-
-
-    curve = create2X(-2,20,100)
-})
-
-function drawCurve(curve){
-    ctx.beginPath()
-    for (var i = 0; i < 640; i++){
-        ctx.lineTo(i,curve(i))
-    }
-    ctx.stroke()
-}
-
-function create2X(a,b,c){
-    return function (x){
-        return a*(x-b)*x + c 
-    }
-}
-
 // centerify mean by ignore freq dist < max * ptg
 function getMeanIndex(data, ptg = 0){
     var mm = data.reduce((a,b)=>Math.max(a,b)) * ptg
@@ -171,13 +92,11 @@ function getMeanIndex(data, ptg = 0){
     var ee = data.reduce((a,b,i)=>b>mm?a+b*i:a,0)
     return ee/nn
 }
-
 function smoothen(sig, remain){
     var dct = DCT(sig)
     var dct = dct.map((x,i)=>i>remain?0:x)
     return IDCT(dct)
 }
-
 function DCT(sig){
     var n = sig.length
     var ret = new Float32Array(n)    
@@ -196,7 +115,6 @@ function DCT(sig){
     }    
     return ret
 }
-
 function IDCT(sig){
     var n = sig.length
     var ret = new Float32Array(n)
@@ -219,7 +137,6 @@ function IDCT(sig){
     }
     return ret
 }
-
 function ADSR(attack, decay, sustain, release, peak, hold){
     this.f = [
         // during attack, mag increases from 0 to peak
@@ -235,7 +152,7 @@ function ADSR(attack, decay, sustain, release, peak, hold){
     ]
     this.dt = [attack, decay, sustain, release]
     this.ft = [...this.dt, Infinity]
-    this.duration = this.ft.reduce((a,b)=>a+b)
+    this.duration = this.dt.reduce((a,b)=>a+b)
     this.seq = function(n, t){
         var dt = t/(n-1)
         var nt = 0
@@ -251,3 +168,130 @@ function ADSR(attack, decay, sustain, release, peak, hold){
         return ret
     }
 }
+
+function getTFDrawer(nframes){
+    return function drawTF(tf){
+        ctx.beginPath()    
+        for (var p of tf){
+            ctx.lineTo(p.f/audioContext.sampleRate*2*canvas.width,
+            p.t*audioContext.sampleRate/len/nframes*canvas.height)
+        }
+        ctx.stroke()
+    }
+}
+
+var step = 128
+var len = 128
+var minE = 1e-8
+var hamWin = HammingWindow(len,0.46)
+var rectWin = hamWin.map(x=>1);
+var sig
+var mySig
+
+function energySignal(frames){    
+    // get energy-time curve from framing
+    energies = frames.map(x=>getEngergy(x))    
+    
+    // origin energy-time curve
+    downArea.drawFloatsRow(energies)
+    
+    // smoothed energy-time curve with dct
+    var smoothed = smoothen(energies,36)
+    ctx.strokeStyle = "rgb(255,128,128)"
+    downArea.drawFloatsRow(smoothed)
+    upArea.drawFloatsRow(smoothed)
+
+    //diff = adsrSeq.map((x,i)=>x - recEng[i])
+}
+function energyADSR(ADSR, n, duration){
+    var adsrSeq = ADSR.seq(n, duration)
+    ctx.strokeStyle = "rgb(128,255,255)"
+    downArea.drawFloatsRow(adsrSeq)
+
+}
+function timeFreqSignal(frames){
+    // fft on frames
+    var amps = frames.map(x=> Amplitude(FFT({real:x,imag:[]},0,len)))
+
+    // freq - time
+    ctx.strokeStyle = "rgb(128,128,128)"
+    amps.map((x,i)=>
+        drawing.drawFloatsRow(x.map(y=>y*4),ctx,canvasArea.getRow(amps.length,i))
+    )
+
+    //find domain freq of frame with mean 
+    var means = amps.map(x=>getMeanIndex(x, 0.1)*audioContext.sampleRate/len)
+
+    var tf_curve = []
+    var dt = len/audioContext.sampleRate
+    for (var i=0; i<means.length; i++){
+        tf_curve.push({t:dt*(i+0.5),f:means[i]})
+    }
+    ctx.strokeStyle = "#00eeee"
+    getTFDrawer(frames.length)(tf_curve)
+
+}
+function timeFreqCurve(curve, n, duration){
+    var tf_curve = []
+    for(var t=0; t<duration; t+=0.0001){
+       f = curve(t)
+       tf_curve.push({t,f})
+    }
+    ctx.strokeStyle = "#ee00ee"
+    getTFDrawer(n)(tf_curve)
+}
+
+var myCurve = (x)=> x > 0.0875? 1480*2:2*1624070*x*x*x+392*2
+var myADSR = new ADSR (0.008, 0.017, 0.05, 0.05, 0.425, 0.2)
+var nn = myADSR.duration * audioContext.sampleRate
+mySig = new Float32Array(nn)
+var envlope = myADSR.seq(nn,myADSR.duration)
+var dt = 1 / audioContext.sampleRate
+var phase = 0
+for (var i=0; i<nn; i++){
+   var t = dt * i
+   var f = myCurve(t)
+   phase = phase + dt*f*2*Math.PI
+   mySig[i] = Math.sqrt(envlope[i]) * Math.sin(phase) * Math.SQRT2
+   
+}
+//playData(createSig)
+
+
+
+function energyAnalysis(sig){
+    
+    // framing
+    var frames = getFrames(sig, step, rectWin)
+    energySignal(frames)
+    
+    // ADSR model to approach the origin curve
+    var myADSR = new ADSR (0.008, 0.017, 0.05, 0.05, 0.425, 0.2)    
+    energyADSR(myADSR, frames.length, sig.length / audioContext.sampleRate)
+}
+
+function timeFreqAnalysis(sig){
+    // framing
+    frames = getFrames(sig, step, hamWin)
+    timeFreqSignal(frames)
+    // An x3 model to approach the origin curve    
+    var myCurve = (x)=> x > 0.0875? 1480*2:2*1624070*x*x*x+392*2
+    timeFreqCurve(myCurve, frames.length, myADSR.duration)
+}
+
+/*
+audioContext.decodeAudioData(data1.buffer, function(buff){
+    sig = buff.getChannelData(0)
+    //energyAnalysis(sig)
+    //timeFreqAnalysis(sig)
+})
+*/
+
+function analysisPlan(analysis){
+    return function plan(buff){
+        sig = buff.getChannelData(0)
+        analysis(sig)
+    }
+}
+//
+// audioContext.decodeAudioData(data1.buffer,analysisPlan(timeFreqAnalysis))
