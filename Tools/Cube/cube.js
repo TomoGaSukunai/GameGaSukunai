@@ -1,96 +1,39 @@
+var Coder = require("./cube-coder")
+var CubeMath = require("./cube-math")
 
 var canvas = document.getElementById("gaming")
 var gl = canvas.getContext("webgl")
 
-
-
-var bs = [-0.5,0.5]
-var vertices0 = []
-for(var x of bs){
-    for(var y of bs){
-        for(var z of bs){
-            vertices0.push([x,y,z])
-        }
-    }
-}
-
-
-var faces = []
-for(var b of bs){
-    faces.push([b,0,0],[0,b,0],[0,0,b])
-}
-
-
 var vertices = []
 var colors = []
 var indices = []
-for (var ii in faces){
-    var face = faces[ii]
-    var quad = []
-    for (var i in vertices0){
-        var vertex = vertices0[i]
-        if (inner(vertex,face) >0){
-            quad.push(parseInt(i))
-        }
-    }
-    var v0 = quad[0]
-    var v1,v2,v3
-    var f0 = sub(vertices0[v0], face)
-    for (idx of quad){
-        if (idx === v0) continue
-        var f = inner(face, outer(f0, sub(vertices0[idx],vertices0[v0])))
-        if (f > 0){
-            v1 = idx
-        }else if (f == 0){
-            v2 = idx
-        }else if ( f < 0){
-            v3 = idx
-        }
-    }
-    var fff = face.reduce((a,b)=>a+b)
-    var c = face.map(x=>x)
+var quad_indices = [0,2,1,0,3,2]
+for (var i in CubeMath.faces){
+    var face = CubeMath.faces[i]
+
+    var vv0 = CubeMath.vertices[CubeMath.faces_v[i][0]]
+    var vv1 = vv0.rotate90(face)
+    var vv2 = vv1.rotate90(face)
+    var vv3 = vv2.rotate90(face)
+
+    var fff = face.toArray().reduce((a,b)=>a+b)
+    var c = face.toArray().map(x=>x)
     if (fff > 0 ){
         c = c.map(x=>(x-0.5)*-1.6)
     }else {
         c = c.map(x=>x*-1.6)
     }
-
-
-    var offset = parseInt(ii) * 4
-    indices.push([offset + 0 ,offset + 1,offset +2,offset +0,offset +2,offset +3])
-    vertices.push(vertices0[v0],vertices0[v1],vertices0[v2],vertices0[v3])
+    
+    var offset = parseInt(i) * 4
+    indices.push(quad_indices.map(i=>i+offset))
+    vertices.push(vv0.toArray(),vv1.toArray(),vv2.toArray(),vv3.toArray())
     colors.push(c,c,c,c)
 }
-//indices =[[1,5,7,3]]
 
 vertices = vertices.reduce((a,b)=>[...a,...b])
 indices = indices.reduce((a,b)=>[...a,...b])
 colors = colors.reduce((a,b)=>[...a,...b])
-function outer(a,b){
-    var c = []
-    c[0] = a[1]*b[2] - a[2]*b[1]
-    c[1] = a[2]*b[0] - a[0]*b[2]
-    c[2] = a[0]*b[1] - a[1]*b[0]
-    return c 
-}
-function inner(a,b){    
-    return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
-}
-function sub(a,b){
-    var c = []
-    for (var i=0; i<3; i++){
-        c[i] = a[i] - b[i]        
-    }
-    return c
-}
-function dst(a,b){
-    var d = 0
-    for (var i=0; i<3; i++){
-        var t = (a[i] - b[i])
-        d += t*t
-    }
-    return Math.sqrt(d)
-}
+
 
 var vertex_buffer = gl.createBuffer()
 gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer)
