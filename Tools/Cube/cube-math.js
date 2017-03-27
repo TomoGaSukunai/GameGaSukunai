@@ -73,7 +73,7 @@ for (var i in faces){
     }
 }
 
-const mapping = faces.map(x=>faces.map(x=>[]))
+const mapping = faces_v.map(x=>x.map(x=>[]))
 
 for(var i in faces_v){
     var face_v = faces_v[i]
@@ -89,7 +89,7 @@ for(var i in faces_v){
 
         for(var k = 0; k <3; k++){
             if (trans_F[i][vertices_f[src][0]] == vertices_f[dst][k]){
-                var maplet = [src, dst, k]
+                var maplet = [parseInt(src), parseInt(dst), k]
                 mapping[i][j] = maplet
                 //console.log("Rot along " + i+ " block: " +src + "->"+dst + "||" + k)
             }
