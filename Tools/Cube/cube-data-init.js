@@ -173,8 +173,8 @@ data.initDistributionFromQue = function(){
 data.initDistributionFromZipR2s = function(){
     Timer.set()
     var buff = fs.readFileSync(__dirname + "/zipped.data")
-    var ziped /*= data.ziped*/ = new Uint8Array(buff)
-    var distribution /*= data.distribution*/ = unzipuntranseDistribution(ziped)    
+    var zipped /*= data.ziped*/ = new Uint8Array(buff)
+    var distribution /*= data.distribution*/ = unzipuntranseDistribution(zipped)    
     travesalFullfill(distribution, 6)
     buff = fs.readFileSync(__dirname + "/r2s.data")
     var r2s /*= data.r2s*/ = new Uint16Array(buff.buffer.slice(buff.offset, buff.offset + buff.length))
@@ -419,7 +419,7 @@ data.init = function(){
         } catch (error) {
             var travesal = require("./cube-travesal")            
             travesal.saveQues(travesal.travesal())
-            data.initDistributionFromZipR2s()
+            data.initDistributionFromQue()
         }  
     }
     
