@@ -54,12 +54,12 @@ var data = {
         }
         var path = []
         var bytes = coder.getBytes(code)
-        var dist = this.unzip[getZCode(code)]
+        var dist = this.distribution[getZCode(code)]
         for (; dist>0;){        
             for (var i=0; i<transers.length; i++){
                 var next_bytes = transers[i](bytes)
                 var c = coder.getCode(next_bytes)
-                var next_dist  = this.unzip[getZCode(c)]
+                var next_dist  = this.distribution[getZCode(c)]
                 if (next_dist < dist){
                     path.push(i)
                     bytes = next_bytes
@@ -409,5 +409,21 @@ function unzipuntranseDistribution(ziped){
     }
     return unzip
 }
+
+data.init = function(){
+    try {
+        data.initDistributionFromZipR2s()
+    } catch (error) {
+        try {
+            data.zippingAndR2s()
+        } catch (error) {
+            var travesal = require("./cube-travesal")            
+            travesal.saveQues(travesal.travesal())
+            data.initDistributionFromZipR2s()
+        }  
+    }
+    
+}
+
 
 module.exports = data

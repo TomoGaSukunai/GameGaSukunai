@@ -1,5 +1,7 @@
 var Coder = require("./cube-coder")
 var CubeMath = require("./cube-math")
+var CubeSolver = require("./cube-data-init")
+CubeSolver.init()
 
 var canvas = document.getElementById("gaming")
 var gl = canvas.getContext("webgl")
@@ -179,14 +181,12 @@ function rotateY(m, angle){
     m[4] = c*m[4] + s*mv6
     m[8] = c*m[8] + s*mv10   
 }
-var a = [1,2,3]
-console.log(a)
+
 var timeStamp = Date.now()
 var rY = 1 
 var rX = 0.5
 var animation_que = []
 var cubeStatus = Coder.getBytes(0)
-console.log(cubeStatus)
 
 function main(){
 
@@ -251,7 +251,10 @@ function main(){
                 rX += 0.1
                 rot = false
                 break
-                
+            case "Space":
+                recover()
+                rot = false
+                break
             default:{
                 rot = false
                 console.log(keyState.code)                
@@ -310,7 +313,7 @@ function rotateCube(i, b = true){
 
 function rotateCubeAnimation(i, b = true){
     var f =  function(dt){        
-        var face = CubeMath.faces[i]        
+        var face = CubeMath.faces[i]
         var t0 = 120
         var r = (b ? -1:1)/t0
         var t = t0
@@ -387,5 +390,10 @@ window.addEventListener("keydown",function(e){
     keyState.code = e.code
     //console.log(e)
 })
+
+function recover(){
+    var path = CubeSolver.seekSolve(Coder.getCode(cubeStatus))
+    path.map(x=>rotateCubeAnimation(x%6,x<6))
+}
 
 main()
