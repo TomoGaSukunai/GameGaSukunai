@@ -1,21 +1,8 @@
-const __mapping = require("./cube-math").mapping
-const coder = require("./cube-coder")
 const fs = require("fs")
+const coder = require("./cube-coder")
+const __mapping = require("./cube-math").mapping
 
-//check coder
-// for(let j=0; j<6561; j++){
-//     for (let i=0; i<40320; i++){
-//         let c = i + 40320 * j
-//         let cc = coder.getCode(coder.getBytes(c))
-//         if (c!=cc){
-//             console.err("Err:",c,cc)
-//         }
-//     }
-//     console.log("pass",j)
-// }
-
-
-let getTranser = function (maplet){
+const getTranser = function (maplet){
     let _maplet = maplet
     return function(bytes){
         let ret = new Uint8Array(bytes)
@@ -26,6 +13,7 @@ let getTranser = function (maplet){
         return ret
     }
 }
+
 let lt = []
 let rt = []
 for (let maplet of __mapping){
@@ -33,40 +21,39 @@ for (let maplet of __mapping){
     let acw = maplet.map(x=>{return {src: x[1], dst: x[0], inc: (3-x[2])%3}})
 
     lt.push(getTranser(clw))
-    rt.push(getTranser(acw))    
+    rt.push(getTranser(acw))
+
 }
-let transers = [...lt, ...rt]
+
+const transers =  [...lt, ...rt]
 
 // check transers
-// let d = 0
-// for(let k=0; k<100; k++){
-//     let i = Math.floor(Math.random()*40320)
-//     let j = Math.floor(Math.random()*6561)
-//     let c = i + 40320 * j
-//     let b = coder.getBytes(c)
-//     for(let ii=0; ii<transers.length; ii++){
-//         let tb = transers[ii](b)
-//         let ttb = transers[(ii + 6)%12](tb)
-//         d = b.reduce((a,b,i)=>a+b-ttb[i] ,0)
-//         if (d !==0){
-//             console.error("Err:",c,ii)
-//             console.log(b)
-//             console.log(tb)
-//             console.log(ttb)
-//             break
-//         }
-//     }
-//     if (d !==0){
-//         break
-//     }
-//     console.log("pass",k)
-// }
+    // let d = 0
+    // for(let k=0; k<100; k++){
+    //     let i = Math.floor(Math.random()*40320)
+    //     let j = Math.floor(Math.random()*6561)
+    //     let c = i + 40320 * j
+    //     let b = coder.getBytes(c)
+    //     for(let ii=0; ii<transers.length; ii++){
+    //         let tb = transers[ii](b)
+    //         let ttb = transers[(ii + 6)%12](tb)
+    //         d = b.reduce((a,b,i)=>a+b-ttb[i] ,0)
+    //         if (d !==0){
+    //             console.error("Err:",c,ii)
+    //             console.log(b)
+    //             console.log(tb)
+    //             console.log(ttb)
+    //             break
+    //         }
+    //     }
+    //     if (d !==0){
+    //         break
+    //     }
+    //     console.log("pass",k)
+    // }
 
-let ways = transers.map((x,i)=>1<<i)
-let seeked = ways.reduce((a,b)=> a|b)
-
-
-let known = new Uint16Array(264539520)
+const ways = new Uint16Array(transers.map((x,i)=>1<<i))
+const seeked = ways.reduce((a,b)=> a|b)
 
 class myQue{
     constructor(){
@@ -108,88 +95,85 @@ class myQue{
     }
 }
 
-let logk = 0
-let level = 0
-let levels = new Uint8Array(20)
-let coded = 0
-let begin = Date.now()
-let last = begin
+const travesal = function( depth = 20, dlogk = 10000000){
+    let known = new Uint16Array(264539520)
 
-let ques = []
-let que_now 
-let que_next = new myQue()
-que_next.push(0)
+    let logk = 0
+    let level = 0
+    let coded = 0
+    let begin = Date.now()
+    let last = begin
 
+    let ques = []
+    let que_now 
+    let que_next = new myQue()
+    que_next.push(0)
 
-fs.writeFileSync(__dirname + "/que.data", new Uint8Array(0), "binary")
+    while (!que_next.isEmpty()){
+        level++
+        que_now = que_next
+        que_next = new myQue()
+        ques.push(que_now)
 
-while (!que_next.isEmpty()){
-    level++
-    que_now = que_next
-    que_next = new myQue()
-
-    ques.push(que_now)
-
-    let buff = new Buffer(que_now.tail*4)
-    let idx = 0
-    for (let page of que_now.pages){
-        for (let i=0; i<que_now.pageSize && idx<que_now.tail; i++){
-            buff.writeInt32BE(page[i],idx++)
-        }
-    }
-    fs.appendFileSync(__dirname + "/que.data", buff, "binary")
-
-    while(!que_now.isEmpty()){
-        let nkcs = que_now.pop()
-        if (known[nkcs] != seeked){
-            let kcs = coder.getBytes(nkcs)
-            for(let i=0; i<transers.length; i++){
-                if ((known[nkcs] & ways[i]) == 0){
-                    let ncs = transers[i](kcs)
-                    let nncs = coder.getCode(ncs)
-                    coded++
-                    if (known[nncs] == 0){
-                        que_next.push(nncs)
+        while(!que_now.isEmpty()){
+            let nkcs = que_now.pop()
+            if (known[nkcs] != seeked){
+                let kcs = coder.getBytes(nkcs)
+                for(let i=0; i<transers.length; i++){
+                    if ((known[nkcs] & ways[i]) == 0){
+                        let ncs = transers[i](kcs)
+                        let nncs = coder.getCode(ncs)
+                        coded++
+                        if (known[nncs] == 0){
+                            que_next.push(nncs)
+                        }
+                        known[nkcs] += ways[i]
+                        known[nncs] += ways[(i + 6)%12]
                     }
-                    known[nkcs] += ways[i]
-                    known[nncs] += ways[(i + 6)%12]
                 }
             }
+            if (coded > logk){
+                logk += dlogk
+                let now = Date.now()
+                console.log("T:" + (now-last) + "ms", "Coded:" + coded, que_now.head*100/que_now.tail + "%")
+                console.log("L:" + level,"Q:" + que_now.size(), "N:" + que_next.size())
+                last = now
+            }        
         }
-        if (coded > logk){
-            logk += 10000000
-            let now = Date.now()
-            console.log("T:" + (now-last) + "ms", "Coded:" + coded, que_now.head*100/que_now.tail + "%")
-            console.log("L:" + level,"Q:" + que_now.size(), "N:" + que_next.size())
-        }        
+        let now = Date.now()
+        console.log("T:" + (now-last) + "ms", "Coded:" + coded, que_now.head*100/que_now.tail + "%")
+        console.log("L:" + level,"Q:" + que_now.size(), "N:" + que_next.size())
+        last = now
+        if (level == depth){
+            break
+        }
     }
-    let now = Date.now()
-    console.log("T:" + (now-last) + "ms", "Coded:" + coded, que_now.head*100/que_now.tail + "%")
-    console.log("L:" + level,"Q:" + que_now.size(), "N:" + que_next.size())
-    
-    if (level == 18){
-        break
-    }
+    let end = Date.now()
+    console.log((end-begin)+"ms")
+
+    return ques
 }
-let end = Date.now()
-console.log((end-begin)+"ms")
 
+const saveQues = function(ques){
+    //save ques
+    fs.writeFileSync(__dirname + "/que.data", new Uint8Array(0), "binary")
 
+    for (var que of ques){
+        // let buff = new Buffer(que_now.tail*4)
+        // let idx = 0
+        let remain = que.tail
+        for (let page of que.pages){
+            fs.appendFileSync(__dirname+"/que.data", Buffer.from(page.buffer, 0, 4*Math.min(remain, que.pageSize)), "binary")
+            remain -= que.pageSize
+            // for (let i=0; i<que_now.pageSize && idx<que_now.tail; i++){            
+            //     buff.writeInt32BE(page[i],(idx++)*4)
+            // }
+        }
+        // fs.appendFileSync(__dirname + "/que.data", buff, "binary")
+    }
+    let levels = new Uint32Array(ques.map(que=>que.tail))
+    //save levels
+    fs.writeFileSync(__dirname + "/levels.data", Buffer.from(levels.buffer), "binary")    
+}
 
-//save levels
-fs.writeFileSync(__dirname + "/levels.data", Buffer.from(new Uint32Array(levels)), "binary")
-//svae ques 
-// fs.writeFileSync(__dirname + "/que.data", new Uint8Array(0), "binary")
-// for (let que of ques){
-//     let buff = new Buffer(que.tail)
-//     let idx = 0
-//     for (let page of que.pages){
-//         for (let i=0; i<que.pageSize && idx<que.tail; i++){
-//             buff.writeInt32BE(page[i],idx++)
-//         }
-//     }
-//     fs.appendFileSync(__dirname + "/que.data", buff, "binary")
-// }
-
-
-module.exports
+module.exports = {transers, travesal, saveQues}

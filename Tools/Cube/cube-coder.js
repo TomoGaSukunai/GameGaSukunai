@@ -1,9 +1,5 @@
 const Coder = {
     getBytes(code){
-        let code = parseInt(code)
-        if (!isFinite(code)){
-            throw new Error("illegal code")
-        }
         let r1 = code % 40320
         let r2 = Math.floor(code / 40320)
         let t = 40320
@@ -42,5 +38,18 @@ const Coder = {
         return (r1 + 40320 *r2)
     }
 }
+
+
+//check Coder
+// for(let j=0; j<6561; j++){
+//     for (let i=0; i<40320; i++){
+//         let c = i + 40320 * j
+//         let cc = Coder.getCode(Coder.getBytes(c))
+//         if (c!=cc){
+//             console.err("Err:",c,cc)
+//         }
+//     }
+//     console.log("pass",j)
+// }
 
 module.exports = Coder
