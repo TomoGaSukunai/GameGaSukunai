@@ -68,9 +68,11 @@ for (var i in CubeMath.vertices_f){
     vertices = vertices.reduce((a,b)=>[...a,...b])
     indices = indices.reduce((a,b)=>[...a,...b])
     colors = colors.reduce((a,b)=>[...a,...b])
-    Block = {vertices, indices, colors}
+
+    var f0 = CubeMath.faces[fs[0]].toArray()
+    var Block = {vertices, indices, colors, v0, f0}
     Block.idx = i
-    Block.v0 = v0
+    
     Blocks.push(Block)
 
 }
@@ -379,6 +381,17 @@ var blocksCheck =function(){
             //console.log(Block.idx,v, vv, idx, CubeMath.vertices[idx].toArray())
             //console.log("check pass")
         }
+
+        //check with getMove
+        var src = Block.idx
+        var dst = parseInt(idx)
+        var inc = cubeStatus[dst+8]
+        var m2 = getMove(get3Face(src),get3Face(dst,inc))
+        
+        if (!(m[0] === m2[0] && m[1] === m2[1] && m[2] === m2[2])){
+            console.error("check fasiled:", idx)
+            console.log(Block.idx, m, m2)
+        }
     }
     
 }
@@ -395,5 +408,168 @@ function recover(){
     var path = CubeSolver.seekSolve(Coder.getCode(cubeStatus))
     path.map(x=>rotateCubeAnimation(x%6,x<6))
 }
+function getFaceOffsets(){
+    var bytes = new Uint8Array(16)
+    for (var idx=0; idx<8; idx++){
+        var Block = Blocks[idx]
+        bytes[idx] = Block.idx
+        var v = Block.f0
+        var m = Block.move_matrix
+        var mv = [
+            m[0] * v[0] + m[4] * v[1] + m[8] * v[2],
+            m[1] * v[0] + m[5] * v[1] + m[9] * v[2],
+            m[2] * v[0] + m[6] * v[1] + m[10] * v[2],
+        ]
+        for(var k=0; k<3; k++){
+            var vi = CubeMath.faces[CubeMath.vertices_f[idx][k]].toArray()
+            if(vi[0] === mv[0] && vi[1] === mv[1] && vi[2] === mv[2]){
+                bytes[idx+8] = k
+            }
+        }
+    }
+    return bytes
+}
 
+function getMapping(src, dst){
+    var mapping = new Uint8Array(16)
+    for (var i=0; i<8; i++){
+        for (var j=0; j<8; j++){
+            if (src[i] === dst[j]){
+                mapping[j] = i
+                mapping[j + 8] = (dst[8+j] + 3 - src[8+i]) % 3
+                break
+            }
+        }
+    }
+    return mapping
+}
+
+function get3Face(i, k=0){
+    var m = CubeMath.vertices_f[i].map(x=>CubeMath.faces[x].toArray()).reduce((a,b)=>[...a,...b])
+    return [...m.slice(k*3,9),...m.slice(0,k*3)]
+}
+// m * v = u  -coloum vector
+function getMove(vs, us){
+    return multi(us, inverse(vs))
+}
+
+function inverse(m){
+    var inv = new Float32Array(9)
+    var val = 0
+    var a = 1
+    for (var i=0; i<3; i++){
+        for(var j=0; j<3; j++){
+            var i0 = i==0?1:0
+            var i1 = i==2?1:2
+            var j0 = j==0?1:0
+            var j1 = j==2?1:2
+            var t = (m[i0*3+j0] * m[i1*3+j1] - m[i1*3+j0] * m[i0*3+j1])
+            inv[i+j*3] = a * t            
+            a = -a 
+        }
+        val += inv[i] * m[i*3]
+    }
+    for(var k=0; k<9; k++){
+        inv[k] /= val
+    }
+    return inv
+}
+
+function multi(m1,m2){
+    var ret = new Float32Array(9)
+    for (var i=0; i<3; i++){
+        for(var j=0; j<3; j++){
+            for(var k=0; k<3; k++){
+                //[ 0 1 
+                //  2 3]
+                ret[3*i+j] += m1[3*i+k]*m2[3*k+j]
+
+                //[0 2
+                // 1 3]
+                //ret[i+3*j] += m1[i+3*k]*m2[k+3*j]
+            }
+        }
+    }
+    return ret
+}
+
+function trans(m){
+    var ret = new Float32Array(9)
+    for (var i=0; i<3; i++){
+        for(var j=0; j<3; j++){
+            ret[i*3+j] = m[3*j+i]
+        }
+    }
+    return ret
+}
+
+function b2btest(){
+    for (var i=0; i<8; i++){
+        for (var j=0; j<8; j++){            
+            var src = trans(get3Face(i))
+            var dst = trans(get3Face(j))
+            var m = getMove(src, dst)
+            //var n = multi(src, m)
+            //console.log(m, src, dst, n)    
+            var nn = Blocks[i].vertices.length/3
+            for(var ii=0; ii<nn; ii++){
+                v = Blocks[i].vertices.slice(ii*3,(ii+1)*3)
+                u = Blocks[j].vertices.slice(ii*3,(ii+1)*3)
+                var t = [
+                    m[0] * v[0] + m[1] * v[1] + m[2] * v[2],
+                    m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+                    m[6] * v[0] + m[7] * v[1] + m[8] * v[2],
+                ]
+                if(!(u[0] === t[0] && u[1] === t[1] && u[2] === t[2])){
+                    console.log(i,j,u,t)
+                }
+            }
+        }
+    }
+}
+
+var eye = [1,0,0, 0,1,0, 0,0,1,]
+function inBlockTest(){    
+    for(var i=0; i<8; i++){
+        for(var k=0; k<3; k++){
+            var move0 = getMove(trans(get3Face(i, k)), trans(get3Face(i, (k+0)%3)))
+            var move1 = getMove(trans(get3Face(i, k)), trans(get3Face(i, (k+1)%3)))
+            var move2 = getMove(trans(get3Face(i, k)), trans(get3Face(i, (k+2)%3)))
+            //move0 = eye
+            if (!compareMatrix(move0, eye)){
+                console.log("!", i, k, move0)
+            }
+            //move1 * move2 = eye            
+            if (!compareMatrix(multi(move1, move2), eye)){
+                console.log("!!", i, k, move1, move2)
+            }
+            //move1 * move1 = move2            
+            if (!compareMatrix(multi(move1, move1), move2)){
+                console.log("!!!", i, k, move1, move2)
+            }
+            //move2 * move2 = move1
+            if (!compareMatrix(multi(move2, move2), move1)){
+                console.log("!!!!", i, k, move1, move2)
+            }
+        }
+    }
+    console.log("~", move1, move2)
+}
+function compareMatrix(a,b){
+    var ret = true
+    for(var i=0; i<9; i++){
+        if (a[i] !== b[i]){
+            ret = false
+            break
+        }
+    }
+    return ret
+}
+
+function inverseTest(){
+    for (var i=0; i<8; i++){
+        var m = get3Face(i)
+        console.log(multi(m,inverse(m)))
+    }
+}
 main()
