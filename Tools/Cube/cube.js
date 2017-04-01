@@ -185,7 +185,7 @@ function rotateY(m, angle){
 }
 
 var timeStamp = Date.now()
-var rY = 1 
+var rY = -0.5 
 var rX = 0.5
 var animation_que = []
 var cubeStatus = Coder.getBytes(0)
@@ -346,6 +346,7 @@ function rotateCubeAnimation(i, b = true){
     }()
     animation_que.push(f)
 }
+
 function mappingStatus(i, b, status){
     var nextStatus = status.map(x=>x)
     for (var maplet of CubeMath.mapping[i]){
@@ -383,17 +384,26 @@ var blocksCheck =function(){
         }
 
         //check with getMove
-        var src = Block.idx
-        var dst = parseInt(idx)
-        var inc = cubeStatus[dst+8]
-        var m2 = getMove(get3Face(src),get3Face(dst,inc))
+        var inc = cubeStatus[parseInt(idx)+8]
+        var src = trans(get3Face(Block.idx, 0))
+        var dst = trans(get3Face(idx, inc))
+        var m2 = trans(getMove(src, dst))
         
-        if (!(m[0] === m2[0] && m[1] === m2[1] && m[2] === m2[2])){
+        if (!compareMatrix(m2,subMat3(m))){
             console.error("check fasiled:", idx)
-            console.log(Block.idx, m, m2)
+            console.log(Block.idx, m, subMat3(m), m2, cubeStatus)
         }
     }
-    
+}
+
+function subMat3(mat4){
+    var ret = new Int8Array(9)
+    for(var i=0; i<3; i++){
+        for(var j=0; j<3; j++){
+            ret[i*3+j] = mat4[i*4+j]
+        }
+    }
+    return ret
 }
 
 var keyState = {f: false}
@@ -552,9 +562,10 @@ function inBlockTest(){
                 console.log("!!!!", i, k, move1, move2)
             }
         }
-    }
-    console.log("~", move1, move2)
+        console.log("~", move1, move2)
+    }    
 }
+
 function compareMatrix(a,b){
     var ret = true
     for(var i=0; i<9; i++){

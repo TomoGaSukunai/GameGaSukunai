@@ -95,7 +95,7 @@ class myQue{
     }
 }
 
-const travesal = function( depth = 20, dlogk = 10000000){
+const travesal = function(depth = 20, dlogk = 10000000){
     let known = new Uint16Array(264539520)
 
     let logk = 0
