@@ -583,4 +583,14 @@ function inverseTest(){
         console.log(multi(m,inverse(m)))
     }
 }
+
+function moveTo(code){
+    var src = cubeStatus
+    var dst = Coder.getBytes(code)
+    var dis = getMapping(dst, src)
+    var path = CubeSolver.seekSolve(Coder.getCode(dis))
+    //path.reverse().map(x=>rotateCubeAnimation(x%6, x>6))
+    path.map(x=>rotateCubeAnimation(x%6, x<6))
+    //CubeSolver.seekSolve(Coder.getCode(getMapping(Coder.getBytes(code),cubeStatus))).map(x=>rotateCubeAnimation(x%6,x<6))
+}
 main()
