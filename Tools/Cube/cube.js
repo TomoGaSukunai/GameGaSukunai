@@ -12,7 +12,7 @@ var conner_indices = [
     0,3,4, 0,4,5,
     0,5,6, 0,6,1,
     ]
-    
+var realCubeColors = [[1,0.3,0],[1,1,1],[0,0.5,0],[1,0,0],[1,1,0],[0,0,1]]
 function getColorByVec3(vec3) {
     var fff = vec3.reduce((a,b)=>a+b)
     var c = vec3.map(x=>x)
@@ -43,7 +43,7 @@ for (var i in CubeMath.vertices_f){
         vv[4*j+3] = faceArray
         indices.push(quad_indices.map(i=>i+offset))
         offset += 4
-        var c = getColorByVec3(faceArray)
+        var c = realCubeColors[fs[j]] //getColorByVec3(faceArray)
         colors.push(c,c,c,c)//...quad_indices.map(x=>c))
     }
     for (var j=0; j<3; j++){        
@@ -59,7 +59,7 @@ for (var i in CubeMath.vertices_f){
         
     indices.push(conner_indices.map(i=>i+offset))
     offset += 7
-    var c = [0.9,0.9,0.9]
+    var c = [0.4,0.4,0.4]
     colors.push(c,c,c,c,c,c,c)
     
     vv = vv.map(v=>v.map((k,i)=>k + sv[i]))
