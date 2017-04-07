@@ -32,6 +32,7 @@ function getAttribLocations(gl, shaderProgram, attribs){
     }
     return ret
 }
+
 function getUniformLocations(gl, shaderProgram, uniforms){
     var ret = {}
     for(var key of uniforms){
@@ -42,7 +43,7 @@ function getUniformLocations(gl, shaderProgram, uniforms){
 
 
 function initBlocks(gl, attribs, uniforms){
-    var CubeMath = require("./cube-math")
+    var CubeData = require("./cube-data")
     var quad_indices = [0,2,1,0,3,2]
     var conner_indices = [
         0,1,2, 0,2,3,
@@ -52,55 +53,86 @@ function initBlocks(gl, attribs, uniforms){
     var realCubeColors = [[1,0.3,0],[1,1,1],[0,0.5,0],[1,0,0],[1,1,0],[0,0,1]]
     var Blocks = []
 
-    for (var i in CubeMath.vertices_f){
-        var offset = 0
-        var vertices = []
+    for (var i in CubeData.vertices_f){
+   var vertices = []
         var colors = []
         var indices = []
-        var fs = CubeMath.vertices_f[i];
-        var vv = []
-        var v0 = CubeMath.vertices[i].toArray()
-        var sv = v0.map(x=>x*0.1)
-        for (var j=0; j<3; j++){        
-            vv[4*j] = v0
-            var faceArray = CubeMath.faces[fs[j]].toArray()
-            vv[4*j+1] = faceArray
-            vv[4*j+2] = faceArray
-            vv[4*j+3] = faceArray
-            indices.push(quad_indices.map(i=>i+offset))
-            offset += 4
-            var c = realCubeColors[fs[j]] //getColorByVec3(faceArray)
-            colors.push(c,c,c,c)//...quad_indices.map(x=>c))
+        var v0 = CubeData.vertices[i]
+        //create 3 outer faces
+        for (var j=0; j<3; j++){
+            //
+            indices.push(CubeData.quad_indices.map(k=>k+vertices.length))
+            //
+            var face = CubeData.faces[CubeData.vertices_f[i][j]]
+            var face_prev = CubeData.faces[CubeData.vertices_f[i][(j+2)%3]]
+            var face_next = CubeData.faces[CubeData.vertices_f[i][(j+1)%3]]
+            vertices.push(v0)
+            vertices.push(face.map((x,k)=>x+face_prev[k]))
+            vertices.push(face)
+            vertices.push(face.map((x,k)=>x+face_next[k]))            
+            //with color of face
+            var c = CubeData.faces_color[CubeData.vertices_f[i][j]]
+            colors.push(c,c,c,c)
         }
-        for (var j=0; j<3; j++){        
-            vv[4*j+1] = vv[4*j+1].map((x,k)=>x+vv[4*((j+2)%3)+2][k])
-            vv[4*j+3] = vv[4*j+3].map((x,k)=>x+vv[4*((j+1)%3)+2][k])
-        }
-
-        vv.push([0,0,0])
+        // create inner faces
+        //
+        indices.push(CubeData.conner_indices.map(k=>k+vertices.length))
+        //
+        vertices.push([0,0,0])
         for (var j=0; j<3;j++){
-            vv.push(vv[4*j+1])
-            vv.push(vv[4*j+2])        
-        }   
-            
-        indices.push(conner_indices.map(i=>i+offset))
-        offset += 7
-        var c = [0.4,0.4,0.4]
+            vertices.push(vertices[4*j+1])
+            vertices.push(vertices[4*j+2])        
+        }
+        //
+        var c = [0.9,0.9,0.9]
         colors.push(c,c,c,c,c,c,c)
         
-        vv = vv.map(v=>v.map((k,i)=>k + sv[i]))
-        
-        vertices.push(...vv)
+        //move block a bit away from origin point
+        vertices = vertices.map(v=>v.map((k,i)=>k + v0[i]*0.1))
+
+        //
         vertices = vertices.reduce((a,b)=>[...a,...b])
         indices = indices.reduce((a,b)=>[...a,...b])
         colors = colors.reduce((a,b)=>[...a,...b])
 
-        var f0 = CubeMath.faces[fs[0]].toArray()
-        var Block = new Object3D(gl, indices, vertices, colors, "Block" + idx, attribs, uniforms)
+
+        var Block = new Object3D(gl, indices, vertices, colors, "Block" + i, attribs, uniforms)
         Block.init()
         
         Blocks.push(Block)
     }
+    return Blocks
+}
+
+function initBox(gl, attribs, uniforms){
+    var vertices = [1,0,0, 0,1,0, 0,0,1]
+    var colors = [1,0,0, 0,1,0 ,0,0,1]
+    var indices = [0,1,2]    
+
+    var Box = new Object3D(gl, indices, vertices, colors, "Box", attribs, uniforms)
+    Box.init()
+
+    return Box
+}
+
+
+
+function draw(gl, canvas, uniforms, project_matrix, view_matrix, move_matrix, Box){
+
+    return function render(){
+        gl.viewport(0, 0, canvas.width, canvas.height)
+        gl.enable(gl.DEPTH_TEST)
+        gl.clearColor(0, 0, 0, 1)
+        gl.clear(gl.COLOR_BUFFER_BIT)
+
+        gl.uniformMatrix4fv(uniforms.Pmatrix, false, project_matrix.array)
+        gl.uniformMatrix4fv(uniforms.Vmatrix, false, view_matrix.array)
+        gl.uniformMatrix4fv(uniforms.Mmatrix, false, move_matrix.array)
+
+        Box.draw()
+        requestAnimationFrame(render)
+    }
+    
 }
 
 function main(){
@@ -117,7 +149,20 @@ function main(){
         ["Pmatrix", "Vmatrix", "Mmatrix", "Lmatrix"])
     
 
-    var Blocks = initBlocks(gl, attribs, {LMatrix: uniforms.LMatrix})
+    var view_matrix = $MAT4.createView()
+    var project_matrix = $MAT4.createProjection()
+    var move_matrix = $MAT4.create()
+
+    var Blocks = initBlocks(gl, attribs, {Lmatrix: uniforms.Lmatrix})
+    var Box = initBox(gl, attribs, {Lmatrix: uniforms.Lmatrix})
+    
+    Blocks.draw = function(){
+        for(var Block of Blocks){
+            Block.draw()
+        }
+    }
+    
+    draw(gl,canvas, uniforms,project_matrix, view_matrix, move_matrix, Blocks)()
 }
 
 
@@ -151,7 +196,8 @@ class Object3D{
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null)
     }
     draw(){
-        gl.uniformMatrix4fv(this.uniforms.LMatrix, false, this.move_matrix)
+        let gl = this.gl
+        gl.uniformMatrix4fv(this.uniforms.Lmatrix, false, this.move_matrix.array)
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.index_buffer)
 
@@ -161,6 +207,9 @@ class Object3D{
         gl.bindBuffer(gl.ARRAY_BUFFER, this.color_buffer)
         gl.vertexAttribPointer(this.attribs.color, 3, gl.FLOAT, false, 0, 0)
         
+        //gl.drawArrays(gl.POINTS, 0, 1)
         gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_SHORT, 0)
     }
 }
+
+main()

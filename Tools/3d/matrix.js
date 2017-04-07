@@ -36,7 +36,7 @@ const $MAT4 = {
     },
     createView(){
         let ret = new MAT4()
-        ret[14] = 6
+        ret[14] = -6
         return ret
     },
     rotate(mat, xi, angle = Math.PI/2){
