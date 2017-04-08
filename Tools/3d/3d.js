@@ -41,6 +41,19 @@ function getUniformLocations(gl, shaderProgram, uniforms){
     return ret
 }
 
+function initTexture(gl, src){
+    var myTexture = gl.createTexture()
+    myTexture.image = new Image()
+    myTexture.image.onload = function(){
+        handleLoadedTexture(gl, myTexture)
+    }
+    myTexture.image.src = src
+}
+function handleLoadedTexture(gl, texture){
+    gl.bindTexture(fl.TEXTURE_2D, texture)
+    gl.pixelStorei(gl.UNPACK_FLIP_YWEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl/RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.)
+}
 
 function initBlocks(gl, attribs, uniforms){
     var CubeData = require("./cube-data")
@@ -120,15 +133,18 @@ function initBox(gl, attribs, uniforms){
 function draw(gl, canvas, uniforms, project_matrix, view_matrix, move_matrix, Box){
 
     return function render(){
+        //clear viewport and prepare to render 
         gl.viewport(0, 0, canvas.width, canvas.height)
         gl.enable(gl.DEPTH_TEST)
         gl.clearColor(0, 0, 0, 1)
         gl.clear(gl.COLOR_BUFFER_BIT)
 
+        //use global projection and niewport, movement
         gl.uniformMatrix4fv(uniforms.Pmatrix, false, project_matrix.array)
         gl.uniformMatrix4fv(uniforms.Vmatrix, false, view_matrix.array)
         gl.uniformMatrix4fv(uniforms.Mmatrix, false, move_matrix.array)
 
+        //draw objects
         Box.draw()
         requestAnimationFrame(render)
     }
