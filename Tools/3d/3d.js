@@ -48,11 +48,15 @@ function initTexture(gl, src){
         handleLoadedTexture(gl, myTexture)
     }
     myTexture.image.src = src
+    return myTexture
 }
 function handleLoadedTexture(gl, texture){
-    gl.bindTexture(fl.TEXTURE_2D, texture)
-    gl.pixelStorei(gl.UNPACK_FLIP_YWEBGL, true)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl/RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.)
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.bindTexture(gl.TEXTURE_2D, null)
 }
 
 function initBlocks(gl, attribs, uniforms){
@@ -117,12 +121,13 @@ function initBlocks(gl, attribs, uniforms){
     return Blocks
 }
 
-function initBox(gl, attribs, uniforms){
+function initBox(gl, attribs, uniforms, shaderProgram){
     var vertices = [1,0,0, 0,1,0, 0,0,1]
+    var textureCoord = [1,0, 0,1, 0,0]
     var colors = [1,0,0, 0,1,0 ,0,0,1]
-    var indices = [0,1,2]    
-
-    var Box = new Object3D(gl, indices, vertices, colors, "Box", attribs, uniforms)
+    var indices = [0,1,2]
+    var neheTexture = initTexture(gl, "nehe.gif")
+    var Box = new Object3D(gl, indices, vertices, neheTexture, textureCoord, "Box", attribs, uniforms, shaderProgram)
     Box.init()
 
     return Box
@@ -130,7 +135,8 @@ function initBox(gl, attribs, uniforms){
 
 
 
-function draw(gl, canvas, uniforms, project_matrix, view_matrix, move_matrix, Box){
+function draw(gl, canvas, uniforms, project_matrix, view_matrix, move_matrix, Box,
+    shaderProgram, neheTexture){
 
     return function render(){
         //clear viewport and prepare to render 
@@ -160,37 +166,41 @@ function main(){
     var shaderProgram = initShaders(gl, vertSource, fragSource)
     
     var attribs = getAttribLocations(gl, shaderProgram, 
-        ["coordinates", "color"])
+        ["coordinates", "textureCoordinates"])
     var uniforms = getUniformLocations(gl, shaderProgram, 
         ["Pmatrix", "Vmatrix", "Mmatrix", "Lmatrix"])
     
 
+    var neheTexture = initTexture(gl, "nehe.gif")
     var view_matrix = $MAT4.createView()
     var project_matrix = $MAT4.createProjection()
     var move_matrix = $MAT4.create()
 
-    var Blocks = initBlocks(gl, attribs, {Lmatrix: uniforms.Lmatrix})
-    var Box = initBox(gl, attribs, {Lmatrix: uniforms.Lmatrix})
+
+    var Box = initBox(gl, attribs, {Lmatrix: uniforms.Lmatrix}, shaderProgram)
     
-    Blocks.draw = function(){
-        for(var Block of Blocks){
-            Block.draw()
-        }
-    }
+    //var Blocks = initBlocks(gl, attribs, {Lmatrix: uniforms.Lmatrix})
+    // Blocks.draw = function(){
+    //     for(var Block of Blocks){
+    //         Block.draw()
+    //     }
+    // }
     
-    draw(gl,canvas, uniforms,project_matrix, view_matrix, move_matrix, Blocks)()
+    draw(gl,canvas, uniforms,project_matrix, view_matrix, move_matrix, Box)()
 }
 
 
 class Object3D{
-    constructor(gl, indices, vertices, colors, name ,attribs, uniforms){
+    constructor(gl, indices, vertices, texture, textureCoord, name ,attribs, uniforms, shaderProgram){
         this.gl = gl
         this.indices = indices
         this.vertices = vertices
-        this.colors = colors
+        this.texture = texture
+        this.textureCoord = textureCoord
         this.name = name
         this.attribs = attribs
         this.uniforms = uniforms
+        this.shaderProgram = shaderProgram
     }
     init(){
         let gl = this.gl
@@ -201,9 +211,9 @@ class Object3D{
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.vertices), gl.STATIC_DRAW)
         gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
-        this.color_buffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.color_buffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.colors), gl.STATIC_DRAW)
+        this.textureCoord_buffer = gl.createBuffer()
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.textureCoord_buffer)
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(this.textureCoord), gl.STATIC_DRAW)
         gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
         this.index_buffer = gl.createBuffer()
@@ -220,9 +230,14 @@ class Object3D{
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vertex_buffer)
         gl.vertexAttribPointer(this.attribs.coordinates, 3, gl.FLOAT, false, 0, 0)
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.color_buffer)
-        gl.vertexAttribPointer(this.attribs.color, 3, gl.FLOAT, false, 0, 0)
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.textureCoord_buffer)
+        gl.vertexAttribPointer(this.attribs.textureCoordinates, 2, gl.FLOAT, false, 0, 0)
         
+        
+        gl.activeTexture(gl.TEXTURE0)
+        gl.bindTexture(gl.TEXTURE_2D, this.texture)
+        gl.uniform1i(this.shaderProgram.samplerUniform, 0)
+
         //gl.drawArrays(gl.POINTS, 0, 1)
         gl.drawElements(gl.TRIANGLES, this.indices.length, gl.UNSIGNED_SHORT, 0)
     }

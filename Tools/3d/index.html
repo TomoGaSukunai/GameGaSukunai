@@ -2,24 +2,30 @@
 <html>
     <script id="shader-fs" type="x-shader/x-fragment">
         precision mediump float;
-        varying vec3 vColor;
+        //varying vec3 vColor;
+        varying vec2 vTextureCoordinates;
+        uniform sampler2D uSampler;
         void main(void) {
-            gl_FragColor = vec4(vColor,1.0);
+            //gl_FragColor = vec4(vColor,1.0);
+            gl_FragColor = texture2D (uSampler, vec2(vTextureCoordinates.s, vTextureCoordinates.t));
             //vec4(0.1, 0.0, 0.0, 0.1);
         }
     </script>
     <script id="shader-vs" type="x-shader/x-vertex">
         attribute vec3 coordinates;
+        attribute vec2 textureCoordinates;
         uniform mat4 Pmatrix;
         uniform mat4 Vmatrix;
         uniform mat4 Mmatrix;
         uniform mat4 Lmatrix;
-        attribute vec3 color;
-        varying vec3 vColor;
+        //attribute vec3 color;
+        //varying vec3 vColor;
+        varying vec2 vTextureCoordinates;
         void main(void){
             gl_Position = Pmatrix*Vmatrix*Mmatrix*Lmatrix*vec4(coordinates, 1.0);
             gl_PointSize = 10.0;
-            vColor = color;
+            //vColor = color;
+            vTextureCoordinates = textureCoordinates;
         }
     </script>
     <title>MagicCube</title>
