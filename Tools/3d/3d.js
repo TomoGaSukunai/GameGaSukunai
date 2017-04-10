@@ -50,6 +50,7 @@ function initTexture(gl, src){
     myTexture.image.src = src
     return myTexture
 }
+
 function handleLoadedTexture(gl, texture){
     gl.bindTexture(gl.TEXTURE_2D, texture)
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
@@ -73,7 +74,7 @@ function initBlocks(gl, attribs, uniforms){
     for (var i in CubeData.vertices_f){
    var vertices = []
         var colors = []
-        var indices = []
+        var indices = []        
         var v0 = CubeData.vertices[i]
         //create 3 outer faces
         for (var j=0; j<3; j++){
@@ -132,8 +133,6 @@ function initBox(gl, attribs, uniforms, shaderProgram){
 
     return Box
 }
-
-
 
 function draw(gl, canvas, uniforms, project_matrix, view_matrix, move_matrix, Box,
     shaderProgram, neheTexture){
