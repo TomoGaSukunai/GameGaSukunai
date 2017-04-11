@@ -19,6 +19,9 @@ class MAT4{
             })
         }
     }
+    rotate(xi, radius){
+        $MAT4.rotate(this, xi, radius)
+    }
 }
 
 const $MAT4 = {

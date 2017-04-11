@@ -123,10 +123,10 @@ function initBlocks(gl, attribs, uniforms){
 }
 
 function initBox(gl, attribs, uniforms, shaderProgram){
-    var vertices = [1,0,0, 0,1,0, 0,0,1]
-    var textureCoord = [1,0, 0,1, 0,0]
+    var vertices = [1,0,0, 0,1,0, 0,0,0, 1,1,0]
+    var textureCoord = [1,0, 0,1, 0,0, 1,1]
     var colors = [1,0,0, 0,1,0 ,0,0,1]
-    var indices = [0,1,2]
+    var indices = [0,1,2, 1,0,3]
     var neheTexture = initTexture(gl, "nehe.gif")
     var Box = new Object3D(gl, indices, vertices, neheTexture, textureCoord, "Box", attribs, uniforms, shaderProgram)
     Box.init()
@@ -141,7 +141,7 @@ function draw(gl, canvas, uniforms, project_matrix, view_matrix, move_matrix, Bo
         //clear viewport and prepare to render 
         gl.viewport(0, 0, canvas.width, canvas.height)
         gl.enable(gl.DEPTH_TEST)
-        gl.clearColor(0, 0, 0, 1)
+        gl.clearColor(0.1, 0.1, 0.1, 1)
         gl.clear(gl.COLOR_BUFFER_BIT)
 
         //use global projection and niewport, movement
@@ -150,6 +150,7 @@ function draw(gl, canvas, uniforms, project_matrix, view_matrix, move_matrix, Bo
         gl.uniformMatrix4fv(uniforms.Mmatrix, false, move_matrix.array)
 
         //draw objects
+        Box.move_matrix.rotate(1,0.01)
         Box.draw()
         requestAnimationFrame(render)
     }
@@ -172,7 +173,7 @@ function main(){
 
     var neheTexture = initTexture(gl, "nehe.gif")
     var view_matrix = $MAT4.createView()
-    var project_matrix = $MAT4.createProjection()
+    var project_matrix = $MAT4.createProjection(20,canvas.width/canvas.height)
     var move_matrix = $MAT4.create()
 
 
