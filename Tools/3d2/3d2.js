@@ -141,11 +141,15 @@ function initShaders(){
     shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition")
     gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute)
 
-    shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor")
-    gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute)
+    // shaderProgram.vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor")
+    // gl.enableVertexAttribArray(shaderProgram.vertexColorAttribute)
+
+    shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord")
+    gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute)
 
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix")
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix")
+    shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")
 }
 
 function getShader(gl, id){
@@ -164,62 +168,63 @@ function getShader(gl, id){
 }
 
 
-var pyramidVertexPositionBuffer
-var pyramidVertexColorBuffer
+// var pyramidVertexPositionBuffer
+// var pyramidVertexColorBuffer
 var cubeVertexPositionBuffer
-var cubeVertexColorBuffer
+// var cubeVertexColorBuffer
 var cubeVertexIndexBuffer
+var cubeVertexTexturCoordBuffer
 function initBuffers(){
-    pyramidVertexPositionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer)
-    var vertices =[
-         0.0,  1.0,  0.0,
-        -1.0, -1.0,  1.0,
-         1.0, -1.0,  1.0,
+    // pyramidVertexPositionBuffer = gl.createBuffer()
+    // gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer)
+    // var vertices =[
+    //      0.0,  1.0,  0.0,
+    //     -1.0, -1.0,  1.0,
+    //      1.0, -1.0,  1.0,
 
-         0.0,  1.0,  0.0,
-         1.0, -1.0,  1.0,
-         1.0, -1.0, -1.0,
+    //      0.0,  1.0,  0.0,
+    //      1.0, -1.0,  1.0,
+    //      1.0, -1.0, -1.0,
 
-         0.0,  1.0,  0.0,
-         1.0, -1.0, -1.0,
-        -1.0, -1.0, -1.0,
+    //      0.0,  1.0,  0.0,
+    //      1.0, -1.0, -1.0,
+    //     -1.0, -1.0, -1.0,
 
-         0.0,  1.0,  0.0,
-        -1.0, -1.0, -1.0,
-        -1.0, -1.0,  1.0,
-    ]
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
-    pyramidVertexPositionBuffer.itemSize = 3
-    pyramidVertexPositionBuffer.numItems = 12
+    //      0.0,  1.0,  0.0,
+    //     -1.0, -1.0, -1.0,
+    //     -1.0, -1.0,  1.0,
+    // ]
+    // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
+    // pyramidVertexPositionBuffer.itemSize = 3
+    // pyramidVertexPositionBuffer.numItems = 12
 
-    pyramidVertexColorBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer)
-    var colors =[
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
+    // pyramidVertexColorBuffer = gl.createBuffer()
+    // gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer)
+    // var colors =[
+    //     1.0, 0.0, 0.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
+    //     0.0, 0.0, 1.0, 1.0,
 
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
+    //     1.0, 0.0, 0.0, 1.0,
+    //     0.0, 0.0, 1.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
 
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
+    //     1.0, 0.0, 0.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
+    //     0.0, 0.0, 1.0, 1.0,
 
-        1.0, 0.0, 0.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-    ]
+    //     1.0, 0.0, 0.0, 1.0,
+    //     0.0, 0.0, 1.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
+    // ]
     
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
-    pyramidVertexColorBuffer.itemSize = 4
-    pyramidVertexColorBuffer,numItems = 12
+    // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
+    // pyramidVertexColorBuffer.itemSize = 4
+    // pyramidVertexColorBuffer,numItems = 12
 
     cubeVertexPositionBuffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer)
-    vertices = [
+    var vertices = [
         -1.0, -1.0,  1.0,
          1.0, -1.0,  1.0,
          1.0,  1.0,  1.0,
@@ -254,42 +259,42 @@ function initBuffers(){
     cubeVertexPositionBuffer.itemSize = 3
     cubeVertexPositionBuffer.numItems = 24
 
-    cubeVertexColorBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer)
-    colors = [
-        1.0, 0.0, 0.0, 1.0,
-        1.0, 0.0, 0.0, 1.0,
-        1.0, 0.0, 0.0, 1.0,
-        1.0, 0.0, 0.0, 1.0,
+    // cubeVertexColorBuffer = gl.createBuffer()
+    // gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer)
+    // colors = [
+    //     1.0, 0.0, 0.0, 1.0,
+    //     1.0, 0.0, 0.0, 1.0,
+    //     1.0, 0.0, 0.0, 1.0,
+    //     1.0, 0.0, 0.0, 1.0,
 
-        1.0, 1.0, 0.0, 1.0,
-        1.0, 1.0, 0.0, 1.0,
-        1.0, 1.0, 0.0, 1.0,
-        1.0, 1.0, 0.0, 1.0,
+    //     1.0, 1.0, 0.0, 1.0,
+    //     1.0, 1.0, 0.0, 1.0,
+    //     1.0, 1.0, 0.0, 1.0,
+    //     1.0, 1.0, 0.0, 1.0,
         
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
-        0.0, 1.0, 0.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
+    //     0.0, 1.0, 0.0, 1.0,
         
-        1.0, 0.5, 0.5, 1.0,
-        1.0, 0.5, 0.5, 1.0,
-        1.0, 0.5, 0.5, 1.0,
-        1.0, 0.5, 0.5, 1.0,
+    //     1.0, 0.5, 0.5, 1.0,
+    //     1.0, 0.5, 0.5, 1.0,
+    //     1.0, 0.5, 0.5, 1.0,
+    //     1.0, 0.5, 0.5, 1.0,
         
-        1.0, 0.0, 1.0, 1.0,
-        1.0, 0.0, 1.0, 1.0,
-        1.0, 0.0, 1.0, 1.0,
-        1.0, 0.0, 1.0, 1.0,
+    //     1.0, 0.0, 1.0, 1.0,
+    //     1.0, 0.0, 1.0, 1.0,
+    //     1.0, 0.0, 1.0, 1.0,
+    //     1.0, 0.0, 1.0, 1.0,
         
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-        0.0, 0.0, 1.0, 1.0,
-    ]
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
-    cubeVertexColorBuffer.itemSize = 4
-    cubeVertexColorBuffer.numItems = 24
+    //     0.0, 0.0, 1.0, 1.0,
+    //     0.0, 0.0, 1.0, 1.0,
+    //     0.0, 0.0, 1.0, 1.0,
+    //     0.0, 0.0, 1.0, 1.0,
+    // ]
+    // gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
+    // cubeVertexColorBuffer.itemSize = 4
+    // cubeVertexColorBuffer.numItems = 24
 
     cubeVertexIndexBuffer = gl.createBuffer()
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)
@@ -304,6 +309,64 @@ function initBuffers(){
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW)
     cubeVertexIndexBuffer.itemSize = 1
     cubeVertexIndexBuffer.numItems = 36
+
+    cubeVertexTexturCoordBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTexturCoordBuffer)
+    var textureCoords =[
+        0.0, 0.0,
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
+
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
+        0.0, 0.0,
+        
+        0.0, 1.0,
+        0.0, 0.0,
+        1.0, 0.0,
+        1.0, 1.0,
+        
+        1.0, 1.0,
+        0.0, 1.0,
+        0.0, 0.0,
+        1.0, 0.0,
+        
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
+        0.0, 0.0,
+        
+        0.0, 0.0,
+        1.0, 0.0,
+        1.0, 1.0,
+        0.0, 1.0,
+    ]
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW)
+    cubeVertexTexturCoordBuffer.itemSize = 2
+    cubeVertexTexturCoordBuffer.numItems = 24
+}
+
+var neheTexture
+function initTexture(){
+    neheTexture = gl.createTexture()
+    neheTexture.image = new Image()
+    neheTexture.image.onload = function(){
+        handleLoadedTexture(neheTexture)
+        textureReady = true
+    }
+    neheTexture.image.src = "nehe.gif"
+}
+var textureReady = false
+
+function handleLoadedTexture(texture){
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    gl.bindTexture(gl.TEXTURE_2D, null)
 }
 
 var mvMatrix = new mat4()
@@ -325,8 +388,9 @@ function degToRad(degrees){
     return degrees * Math.PI / 180.0
 }
 
-var rPramid = 0
-var rCube = 0
+var xRot = 0
+var yRot = 0
+var zRot = 0
 function drawScene(){
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -334,43 +398,52 @@ function drawScene(){
     pMatrix.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0)
     
     mvMatrix.identity()
-    mvMatrix.translate([-1.5, 0.0, -7.0])
+    // mvMatrix.translate([-1.5, 0.0, -7.0])
 
 
-    mvPushMatrix()
-    mvMatrix.rotate(degToRad(rPramid), [0, 1, 0])
+    // mvPushMatrix()
+    // mvMatrix.rotate(degToRad(rPramid), [0, 1, 0])
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
-    pyramidVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
-    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
-    pyramidVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    // gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer)
+    // gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
+    // pyramidVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    // gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer)
+    // gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
+    // pyramidVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
-    setMatrixUniforms()
-    gl.drawArrays(gl.TRIANGLES, 0, pyramidVertexPositionBuffer.numItems)
+    // setMatrixUniforms()
+    // gl.drawArrays(gl.TRIANGLES, 0, pyramidVertexPositionBuffer.numItems)
 
-    mvPopMatrix()
+    // mvPopMatrix()
 
-    mvMatrix.translate([3.0, 0.0, 0.0])
-    mvPushMatrix()
-    mvMatrix.rotate(degToRad(rCube), [1, 1, 1])
+    mvMatrix.translate([0.0, 0.0, -5.0])
+    // mvPushMatrix()
+    mvMatrix.rotate(degToRad(xRot), [1, 0, 0])
+    mvMatrix.rotate(degToRad(yRot), [0, 1, 0])
+    mvMatrix.rotate(degToRad(zRot), [0, 0, 1])
+    
 
 
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer)
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
     cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
-    cubeVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    // gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer)
+    // gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
+    // cubeVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTexturCoordBuffer)
+    gl.vertexAttribPointer(shaderProgram.textureCoordAttribute,
+    cubeVertexTexturCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, neheTexture)
+    gl.uniform1i(shaderProgram.samplerUniform, 0)
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)
-
     setMatrixUniforms()
     gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0)
 
-
-    mvPopMatrix()
+    // mvPopMatrix()
 }
 
 var lastTime = 0
@@ -379,14 +452,22 @@ function animate(){
     if (lastTime !== 0){
         var elapsed = now - lastTime
 
-        rPramid += (90 * elapsed) / 1000.0
-        rCube -= (75 * elapsed) / 1000.0
+        // rPramid += (90 * elapsed) / 1000.0
+        // rCube -= (75 * elapsed) / 1000.0
+        xRot += (90 * elapsed) / 1000.0
+        yRot += (90 * elapsed) / 1000.0
+        zRot += (90 * elapsed) / 1000.0        
     }
     lastTime = now
 }
 
 function tick(){
     requestAnimationFrame(tick)
+
+    //as async load texture, avoiding warning before texture loaded
+    if (!textureReady){
+        return
+    }
 
     drawScene()
     animate()
@@ -397,6 +478,7 @@ function webGLStart(){
     initGL(canvas)
     initShaders()
     initBuffers()
+    initTexture()
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.enable(gl.DEPTH_TEST)
