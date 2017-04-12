@@ -163,57 +163,147 @@ function getShader(gl, id){
     return shader
 }
 
-var triangleVertexPositionBuffer
-var triangleVertexColorBuffer
-var squareVertexPositionBuffer
-var squareVertexColorBuffer
+
+var pyramidVertexPositionBuffer
+var pyramidVertexColorBuffer
+var cubeVertexPositionBuffer
+var cubeVertexColorBuffer
+var cubeVertexIndexBuffer
 function initBuffers(){
-    triangleVertexPositionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer)
+    pyramidVertexPositionBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer)
     var vertices =[
          0.0,  1.0,  0.0,
-        -1.0, -1.0,  0.0,
-         1.0, -1.0,  0.0,
+        -1.0, -1.0,  1.0,
+         1.0, -1.0,  1.0,
+
+         0.0,  1.0,  0.0,
+         1.0, -1.0,  1.0,
+         1.0, -1.0, -1.0,
+
+         0.0,  1.0,  0.0,
+         1.0, -1.0, -1.0,
+        -1.0, -1.0, -1.0,
+
+         0.0,  1.0,  0.0,
+        -1.0, -1.0, -1.0,
+        -1.0, -1.0,  1.0,
     ]
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
-    triangleVertexPositionBuffer.itemSize = 3
-    triangleVertexPositionBuffer.numItems = 3
+    pyramidVertexPositionBuffer.itemSize = 3
+    pyramidVertexPositionBuffer.numItems = 12
 
-    triangleVertexColorBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer)
+    pyramidVertexColorBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer)
     var colors =[
         1.0, 0.0, 0.0, 1.0,
         0.0, 1.0, 0.0, 1.0,
         0.0, 0.0, 1.0, 1.0,
-    ]
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
-    triangleVertexColorBuffer.itemSize = 4
-    triangleVertexColorBuffer,numItems = 3
 
-    squareVertexPositionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer)
+        1.0, 0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+
+        1.0, 0.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
+
+        1.0, 0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+    ]
+    
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
+    pyramidVertexColorBuffer.itemSize = 4
+    pyramidVertexColorBuffer,numItems = 12
+
+    cubeVertexPositionBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer)
     vertices = [
-         1.0,  1.0,  0.0,
-        -1.0,  1.0,  0.0,
-         1.0, -1.0,  0.0,
-        -1.0, -1.0,  0.0,
+        -1.0, -1.0,  1.0,
+         1.0, -1.0,  1.0,
+         1.0,  1.0,  1.0,
+        -1.0,  1.0,  1.0,
+        
+        -1.0, -1.0, -1.0,
+        -1.0,  1.0, -1.0,
+         1.0,  1.0, -1.0,
+         1.0, -1.0, -1.0,
+        
+        -1.0,  1.0, -1.0,
+        -1.0,  1.0,  1.0,
+         1.0,  1.0,  1.0,
+         1.0,  1.0, -1.0,
+
+        -1.0, -1.0, -1.0,
+         1.0, -1.0, -1.0,
+         1.0, -1.0,  1.0,
+        -1.0, -1.0,  1.0,
+        
+         1.0, -1.0, -1.0,
+         1.0,  1.0, -1.0,
+         1.0,  1.0,  1.0,
+         1.0, -1.0,  1.0,
+
+        -1.0, -1.0, -1.0,
+        -1.0, -1.0,  1.0,
+        -1.0,  1.0,  1.0,
+        -1.0,  1.0, -1.0,
     ]
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
-    squareVertexPositionBuffer.itemSize = 3
-    squareVertexPositionBuffer.numItems = 4
+    cubeVertexPositionBuffer.itemSize = 3
+    cubeVertexPositionBuffer.numItems = 24
 
-    squareVertexColorBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer)
+    cubeVertexColorBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer)
     colors = [
-        0.5, 0.5, 1.0, 1.0,
-        0.5, 0.5, 1.0, 1.0,
-        0.5, 0.5, 1.0, 1.0,
-        0.5, 0.5, 1.0, 1.0,
+        1.0, 0.0, 0.0, 1.0,
+        1.0, 0.0, 0.0, 1.0,
+        1.0, 0.0, 0.0, 1.0,
+        1.0, 0.0, 0.0, 1.0,
+
+        1.0, 1.0, 0.0, 1.0,
+        1.0, 1.0, 0.0, 1.0,
+        1.0, 1.0, 0.0, 1.0,
+        1.0, 1.0, 0.0, 1.0,
+        
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        0.0, 1.0, 0.0, 1.0,
+        
+        1.0, 0.5, 0.5, 1.0,
+        1.0, 0.5, 0.5, 1.0,
+        1.0, 0.5, 0.5, 1.0,
+        1.0, 0.5, 0.5, 1.0,
+        
+        1.0, 0.0, 1.0, 1.0,
+        1.0, 0.0, 1.0, 1.0,
+        1.0, 0.0, 1.0, 1.0,
+        1.0, 0.0, 1.0, 1.0,
+        
+        0.0, 0.0, 1.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
+        0.0, 0.0, 1.0, 1.0,
     ]
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW)
-    squareVertexColorBuffer.itemSize = 4
-    squareVertexColorBuffer.numItems = 4
+    cubeVertexColorBuffer.itemSize = 4
+    cubeVertexColorBuffer.numItems = 24
 
+    cubeVertexIndexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)
+    var cubeVertexIndices = [
+        0,1,2, 0,2,3,
+        4,5,6, 4,6,7,
+        8,9,10, 8,10,11,
+        12,13,14, 12,14,15,
+        16,17,18, 16,18,19,
+        20,21,22, 20,22,23,
+    ]
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW)
+    cubeVertexIndexBuffer.itemSize = 1
+    cubeVertexIndexBuffer.numItems = 36
 }
 
 var mvMatrix = new mat4()
@@ -235,8 +325,8 @@ function degToRad(degrees){
     return degrees * Math.PI / 180.0
 }
 
-var rTri = 0
-var rSquare = 0
+var rPramid = 0
+var rCube = 0
 function drawScene(){
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -248,33 +338,37 @@ function drawScene(){
 
 
     mvPushMatrix()
-    mvMatrix.rotate(degToRad(rTri), [0,1,0])
+    mvMatrix.rotate(degToRad(rPramid), [0, 1, 0])
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer)
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
-    triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
-    gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer)
+    pyramidVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexColorBuffer)
     gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
-    triangleVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    pyramidVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     setMatrixUniforms()
-    gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems)
+    gl.drawArrays(gl.TRIANGLES, 0, pyramidVertexPositionBuffer.numItems)
 
     mvPopMatrix()
 
     mvMatrix.translate([3.0, 0.0, 0.0])
     mvPushMatrix()
-    mvMatrix.rotate(degToRad(rSquare), [1,0,0])
+    mvMatrix.rotate(degToRad(rCube), [1, 1, 1])
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer)
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer)
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-    squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
-    gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
-    squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer)
+    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
+    cubeVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)
 
     setMatrixUniforms()
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems)
+    gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0)
+
 
     mvPopMatrix()
 }
@@ -285,8 +379,8 @@ function animate(){
     if (lastTime !== 0){
         var elapsed = now - lastTime
 
-        rTri += (90 * elapsed) / 1000.0
-        rSquare += (75 * elapsed) / 1000.0
+        rPramid += (90 * elapsed) / 1000.0
+        rCube -= (75 * elapsed) / 1000.0
     }
     lastTime = now
 }
