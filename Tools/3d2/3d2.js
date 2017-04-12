@@ -1,6 +1,10 @@
 class mat4 extends Float32Array{
-    constructor(){
-        super(16)
+    constructor(...p){
+        if (p.length === 0){
+            super(16)
+        }else {
+            super(...p)
+        }
     }
     perspective(angle, ratio, zMin, zMax){
         let ang = Math.tan(angle * Math.PI / 360);
@@ -51,6 +55,63 @@ class mat4 extends Float32Array{
         this[13]+=this[1]*x+this[5]*y+this[9]*z
         this[14]+=this[2]*x+this[6]*y+this[10]*z
         this[15]+=this[3]*x+this[7]*y+this[11]*z
+    }
+    rotate(rad, axis){        
+        //judge vec and normalization
+        let m = Math.sqrt(axis.reduce((a,b)=>a+b*b,0))
+        // if (m == 0){
+        //     return null
+        // }
+        if (m !== 1.0){
+            m = 1.0/m
+        }
+        let naxis = axis.map(x=>x*m)
+        // basic rotate coeffient
+        let s = Math.sin(rad), c = Math.cos(rad)        
+        
+        // let xx = x * x * (1-c) + c
+        // let yx = y * x * (1-c) + z * s 
+        // let zx = z * x * (1-c) - y * s
+
+        // let xy = x * y * (1-c) - z * s
+        // let yy = y * y * (1-c) + c
+        // let zy = z * y * (1-c) + x * s 
+        
+        // let xz = x * z * (1-c) + y * s
+        // let yz = y * z * (1-c) - x * s
+        // let zz = z * z * (1-c) + c
+         
+        let t = this.slice(0,12)
+        let p = new Float32Array(3)
+
+        for (let i=0; i<3; i++){
+            for (let j=0, k=i; j<3; j++, k++){
+                if (k == 3){
+                    k = 0
+                }
+                switch (j){
+                    case 0:
+                        p[k] = c
+                        break
+                    case 1:
+                        p[k] = s * naxis[(k+j)%3]
+                        break
+                    case 2:
+                        p[k] = -s * naxis[(k+j)%3]
+                        break
+                }
+                p[k] += naxis[i] * naxis[k] * (1-c)
+            }
+            for (let j=0; j<4; j++){
+                this[i*4+j] = 0
+                for (let k=0; k<3; k++){ 
+                    this[i*4+j] += t[k*4+j] * p[k]
+                }
+            }
+        }
+    }
+    copy(){
+        return new mat4(this)
     }
 }
 
@@ -162,6 +223,20 @@ function setMatrixUniforms(){
     gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix)
 }
 
+var mvMatrixStack = []
+function mvPushMatrix(){
+    mvMatrixStack.push(mvMatrix.copy())    
+}
+function mvPopMatrix(){
+    mvMatrix = mvMatrixStack.pop()
+}
+
+function degToRad(degrees){
+    return degrees * Math.PI / 180.0
+}
+
+var rTri = 0
+var rSquare = 0
 function drawScene(){
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -171,6 +246,10 @@ function drawScene(){
     mvMatrix.identity()
     mvMatrix.translate([-1.5, 0.0, -7.0])
 
+
+    mvPushMatrix()
+    mvMatrix.rotate(degToRad(rTri), [0,1,0])
+
     gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer)
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, 
     triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
@@ -178,22 +257,45 @@ function drawScene(){
     gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
     triangleVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
-
     setMatrixUniforms()
     gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems)
 
+    mvPopMatrix()
+
     mvMatrix.translate([3.0, 0.0, 0.0])
-    
+    mvPushMatrix()
+    mvMatrix.rotate(degToRad(rSquare), [1,0,0])
+
     gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer)
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
     squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
     gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, 
+    gl.vertexAttribPointer(shaderProgram.vertexColorAttribute,
     squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0)
-
 
     setMatrixUniforms()
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems)
+
+    mvPopMatrix()
+}
+
+var lastTime = 0
+function animate(){
+    var now = Date.now()
+    if (lastTime !== 0){
+        var elapsed = now - lastTime
+
+        rTri += (90 * elapsed) / 1000.0
+        rSquare += (75 * elapsed) / 1000.0
+    }
+    lastTime = now
+}
+
+function tick(){
+    requestAnimationFrame(tick)
+
+    drawScene()
+    animate()
 }
 
 function webGLStart(){
@@ -205,5 +307,5 @@ function webGLStart(){
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.enable(gl.DEPTH_TEST)
 
-    drawScene()
+    tick()
 }
