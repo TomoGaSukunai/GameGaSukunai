@@ -348,24 +348,44 @@ function initBuffers(){
     cubeVertexTexturCoordBuffer.numItems = 24
 }
 
-var neheTexture
+// var neheTexture
+var crateTextures = []
 function initTexture(){
-    neheTexture = gl.createTexture()
-    neheTexture.image = new Image()
-    neheTexture.image.onload = function(){
-        handleLoadedTexture(neheTexture)
+    var crateImage = new Image()
+
+    for (var i=0; i<3; i++){
+        var texture = gl.createTexture()
+        texture.image = crateImage
+        crateTextures.push(texture)
+    } 
+
+    crateImage.onload = function(){
+        handleLoadedTexture(crateTextures)
         textureReady = true
     }
-    neheTexture.image.src = "nehe.gif"
+    crateImage.src = "crate.gif"
 }
 var textureReady = false
 
-function handleLoadedTexture(texture){
-    gl.bindTexture(gl.TEXTURE_2D, texture)
+function handleLoadedTexture(textures){
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image)
+
+    gl.bindTexture(gl.TEXTURE_2D, textures[0])
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[0].image)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+
+    gl.bindTexture(gl.TEXTURE_2D, textures[1])
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[1].image)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    
+    gl.bindTexture(gl.TEXTURE_2D, textures[2])
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[2].image)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST)
+    gl.generateMipmap(gl.TEXTURE_2D)
+
     gl.bindTexture(gl.TEXTURE_2D, null)
 }
 
@@ -389,8 +409,13 @@ function degToRad(degrees){
 }
 
 var xRot = 0
+var xSpeed = 0
 var yRot = 0
+var ySpeed = 0
 var zRot = 0
+
+var z = -5.0
+var filter = 0
 function drawScene(){
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
@@ -416,11 +441,11 @@ function drawScene(){
 
     // mvPopMatrix()
 
-    mvMatrix.translate([0.0, 0.0, -5.0])
+    mvMatrix.translate([0.0, 0.0, z])
     // mvPushMatrix()
     mvMatrix.rotate(degToRad(xRot), [1, 0, 0])
     mvMatrix.rotate(degToRad(yRot), [0, 1, 0])
-    mvMatrix.rotate(degToRad(zRot), [0, 0, 1])
+    // mvMatrix.rotate(degToRad(zRot), [0, 0, 1])
     
 
 
@@ -436,7 +461,7 @@ function drawScene(){
     cubeVertexTexturCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, neheTexture)
+    gl.bindTexture(gl.TEXTURE_2D, crateTextures[filter])
     gl.uniform1i(shaderProgram.samplerUniform, 0)
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)
@@ -454,11 +479,53 @@ function animate(){
 
         // rPramid += (90 * elapsed) / 1000.0
         // rCube -= (75 * elapsed) / 1000.0
-        xRot += (90 * elapsed) / 1000.0
-        yRot += (90 * elapsed) / 1000.0
-        zRot += (90 * elapsed) / 1000.0        
+        xRot += (xSpeed * elapsed) / 1000.0
+        yRot += (ySpeed * elapsed) / 1000.0
+        // zRot += (90 * elapsed) / 1000.0        
     }
     lastTime = now
+}
+
+var currentlyPressedKeys = {}
+function handleKeyDown(event){
+    currentlyPressedKeys[event.keyCode] = true
+    if (String.fromCharCode(event.keyCode) == "F"){
+        filter++
+        if (filter == 3){
+            filter = 0
+        }
+    }
+}
+
+function handleKeyUp(event){
+    currentlyPressedKeys[event.keyCode] = false
+}
+
+function handleKeys(){
+    if (currentlyPressedKeys[33]){
+        //page up
+        z -= 0.05
+    }
+    if (currentlyPressedKeys[34]){
+        //page down
+        z += 0.05
+    }
+    if (currentlyPressedKeys[37]){
+        //left
+        ySpeed -= 1
+    }
+    if (currentlyPressedKeys[39]){
+        //right
+        ySpeed += 1
+    }
+    if (currentlyPressedKeys[38]){
+        //up
+        xSpeed -= 1
+    }
+    if (currentlyPressedKeys[40]){
+        //down
+        xSpeed += 1
+    }    
 }
 
 function tick(){
@@ -469,6 +536,7 @@ function tick(){
         return
     }
 
+    handleKeys()
     drawScene()
     animate()
 }
@@ -482,6 +550,9 @@ function webGLStart(){
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.enable(gl.DEPTH_TEST)
+    document.onkeydown = handleKeyDown
+    document.onkeyup = handleKeyUp
 
     tick()
 }
+
