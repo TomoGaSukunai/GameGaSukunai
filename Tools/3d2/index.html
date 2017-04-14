@@ -2,6 +2,36 @@
 <meta charset="utf-8">
 <html>
     <style>
+        .collapsable,
+        #show,
+        #hide:target{
+            display: none;
+        }
+
+        #hide:target + #show,
+        #hide:target ~ .collapsable{
+            display: inline;
+        }
+        
+
+        input
+        {
+            color: #336633;
+            background: #EEE;
+            width: 50px
+        }
+        .info
+        {
+            position: absolute;
+            display: block;
+            margin: auto;
+            left: 1%;
+            top: 1%;
+            background: #EEE;
+            opacity: 0.7;
+            color: #336633;
+            width: auto;
+        }
         #c3d, body
         {
             border: none;
@@ -46,5 +76,45 @@
 
     <body onload="webGLStart()">
         <canvas id="c3d" width="640" height="480"></canvas>
+        <div class="info">
+            <a href="#hide" id="hide"><button>show options</button></a>
+            <a href="#show" id="show"><button>hide options</button></a>
+            
+            <div class="collapsable">                
+                <input type="checkbox" id="lighting" checked>
+                    Use lighting
+                </input>
+            </div>
+            <div class="collapsable">
+                <h3>Directional light:</h3>
+                <table style="border: 0; padding: 10px; color:#339933;">
+                    <tr>
+                        <td><b>Direction:</b></td>
+                        <td>X: <input type="number" id="lightDirectionX" value="-0.25" /></td>
+                        <td>Y: <input type="number" id="lightDirectionY" value="-0.25" /></td>
+                        <td>Z: <input type="number" id="lightDirectionZ" value="-1.0" /></td>
+                    </tr>
+                    <tr>
+                        <td><b>Color:</b></td>
+                        <td>R: <input type="number" id="directionalR" value="0.8" /></td>
+                        <td>G: <input type="number" id="directionalG" value="0.8" /></td>
+                        <td>B: <input type="number" id="directionalB" value="0.8" /></td>
+                    </tr>
+                </table>                      
+            </div>
+            <div class="collapsable">
+                <h3>Ambient light:</h3>
+                <table style="border: 0; padding: 10px;color:#339933;">
+                    <tr>
+                        <td><b>Color:</b></td>
+                        <td>R: <input type="number" id="ambientR" value="0.2" /></td>
+                        <td>G: <input type="number" id="ambientG" value="0.2" /></td>
+                        <td>B: <input type="number" id="ambientB" value="0.2" /></td>
+                    </tr>
+                </table>
+            </div>
+
+            
+        </div>
     </body>
 </html>
