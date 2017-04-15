@@ -44,12 +44,14 @@
         varying vec2 vTextureCoord;
         varying vec3 vLightWeighting;
         
+        uniform float uAlpha;
+
         uniform sampler2D uSampler;
 
         void main(void){
             //gl_FragColor = vColor;
             vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-            gl_FragColor = vec4(textureColor.rgb * vLightWeighting, textureColor.a);
+            gl_FragColor = vec4(textureColor.rgb * vLightWeighting, textureColor.a * uAlpha);
         }
     </script>
     <script id="shader-vs" type="x-shader/x-vertex">
@@ -97,7 +99,13 @@
             <a href="#hide" id="hide"><button>show options</button></a>
             <a href="#show" id="show"><button>hide options</button></a>
             
-            <div class="collapsable">                
+            <div class="collapsable">
+                <input type="checkbox" id="blending" checked>
+                    Use Blending
+                </input>
+                <br />Alpha level
+                <input type="number" id="alpha" value="0.5" />
+                <br />
                 <input type="checkbox" id="lighting" checked>
                     Use lighting
                 </input>

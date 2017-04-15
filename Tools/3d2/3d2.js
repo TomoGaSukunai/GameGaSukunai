@@ -228,6 +228,7 @@ function initShaders(){
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix")
     shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")
     shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix")
+    shaderProgram.alphaUniform = gl.getUniformLocation(shaderProgram, "uAlpha")
     shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor")
     shaderProgram.lightingDirectionUniform = gl.getUniformLocation(shaderProgram, "uLightingDirection")
     shaderProgram.directionalColorUniform = gl.getUniformLocation(shaderProgram, "uDirectionalColor")    
@@ -469,23 +470,23 @@ function initBuffers(){
 }
 
 // var neheTexture
-// var crateTextures = []
-var crateTexture
+// var glassTextures = []
+var glassTexture
 function initTexture(){
-    var crateImage = new Image()
+    var glassImage = new Image()
 
     // for (var i=0; i<3; i++){
     //     var texture = gl.createTexture()
-    //     texture.image = crateImage
-    //     crateTextures.push(texture)
+    //     texture.image = glassImage
+    //     glassTextures.push(texture)
     // } 
-    crateTexture = gl.createTexture()
-    crateTexture.image = crateImage
-    crateImage.onload = function(){
-        handleLoadedTexture(crateTexture)
+    glassTexture = gl.createTexture()
+    glassTexture.image = glassImage
+    glassImage.onload = function(){
+        handleLoadedTexture(glassTexture)
         textureReady = true
     }
-    crateImage.src = "crate.gif"
+    glassImage.src = "glass.gif"
 }
 var textureReady = false
 
@@ -539,6 +540,20 @@ var zRot = 0
 var z = -5.0
 var filter = 0
 function drawScene(){
+    var blending = document.getElementById("blending").checked
+
+    if (blending){
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE)
+        gl.enable(gl.BLEND)
+        gl.disable(gl.DEPTH_TEST)
+        gl.uniform1f(shaderProgram.alphaUniform, parseFloat(document.getElementById("alpha").value))
+    }else{
+        gl.disable(gl.BLEND)
+        gl.enable(gl.DEPTH_TEST)
+        gl.uniform1f(shaderProgram.alphaUniform, 1.0)
+    }
+
+
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
@@ -587,7 +602,7 @@ function drawScene(){
     cubeVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, crateTexture)
+    gl.bindTexture(gl.TEXTURE_2D, glassTexture)
     gl.uniform1i(shaderProgram.samplerUniform, 0)
 
     var lighting = document.getElementById("lighting").checked
