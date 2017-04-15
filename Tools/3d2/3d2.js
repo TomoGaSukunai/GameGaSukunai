@@ -115,6 +115,80 @@ class mat4 extends Float32Array{
     }
 }
 
+class mat3 extends Float32Array{
+    constructor(...p){
+        if (p.length === 0){
+            super(9)
+        }else {
+            super(...p)
+        }
+    }
+    inverse(){
+        let xx = this[0], xy = this[1], xz = this[2]
+        let yx = this[3], yy = this[4], yz = this[5]
+        let zx = this[6], zy = this[7], zz = this[8]
+        let aa = xx * yy * zz + xy * yz * zx + xz * yx * zy
+               - xx * yz * zy - xy * yx * zz - xz * yy * zx
+        aa = 1.0/aa 
+        this[0] = (yy * zz - yz * zy) * aa
+        this[1] = (xz * zy - xy * zz) * aa
+        this[2] = (xy * yz - xz * yy) * aa
+        
+        this[3] = (yz * zx - yx * zz) * aa
+        this[4] = (xx * zz - xz * zx) * aa
+        this[5] = (xz * yx - xx * yz) * aa
+        
+        this[6] = (yx * zy - yy * zx) * aa
+        this[7] = (xy * zx - xx * zy) * aa
+        this[8] = (xx * yy - xy * yx) * aa   
+    }
+    fromMat4(mat4){
+        for (let i=0; i<3; i++){
+            for(let j=0; j<3; j++){
+                this[i*3+j] = mat4[i*4+j]
+            }
+        }
+    }
+    fromInverseMat4(mat4){
+        this.fromMat4(mat4)
+        this.inverse()
+    }
+    transpose(){
+        for (let i=0; i<3; i++){
+            for(let j=i+1; j<3; j++){
+                let t = this[i*3+j]
+                this[i*3+j] = this[i+3*j]
+                this[i+3*j] = t
+            }
+        }
+    }
+}
+
+class vec3 extends Float32Array{
+    constructor(...p){
+        if (p.length === 0){
+            super(3)
+        }else {
+            super(...p)
+        }
+    }
+    normalize(){
+        var m = this.reduce((a,b)=>a+b*b,0)
+        if (m !== 1.0){
+            m = 1 / Math.sqrt(m)
+            // for (var i in this){
+            //     this[i] *= m
+            // }
+            this.scale(m)
+        }
+    }
+    scale(k){
+        for(var i in this){
+            this[i] *= k
+        }
+    }
+}
+
 var gl
 function initGL(canvas){
     try{
@@ -147,9 +221,17 @@ function initShaders(){
     shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord")
     gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute)
 
+    shaderProgram.vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal")
+    gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute)    
+
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix")
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix")
     shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")
+    shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix")
+    shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor")
+    shaderProgram.lightingDirectionUniform = gl.getUniformLocation(shaderProgram, "uLightingDirection")
+    shaderProgram.directionalColorUniform = gl.getUniformLocation(shaderProgram, "uDirectionalColor")    
+    shaderProgram.useLightingUniform = gl.getUniformLocation(shaderProgram, "uUseLighting")
 }
 
 function getShader(gl, id){
@@ -174,6 +256,7 @@ var cubeVertexPositionBuffer
 // var cubeVertexColorBuffer
 var cubeVertexIndexBuffer
 var cubeVertexTexturCoordBuffer
+var cubeVertexNormalBuffer
 function initBuffers(){
     // pyramidVertexPositionBuffer = gl.createBuffer()
     // gl.bindBuffer(gl.ARRAY_BUFFER, pyramidVertexPositionBuffer)
@@ -346,42 +429,81 @@ function initBuffers(){
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW)
     cubeVertexTexturCoordBuffer.itemSize = 2
     cubeVertexTexturCoordBuffer.numItems = 24
+
+    cubeVertexNormalBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer)
+    var vertexNormals =[
+         0.0,  0.0,  1.0,
+         0.0,  0.0,  1.0,
+         0.0,  0.0,  1.0,
+         0.0,  0.0,  1.0,
+                 
+         0.0,  0.0, -1.0,
+         0.0,  0.0, -1.0,
+         0.0,  0.0, -1.0,
+         0.0,  0.0, -1.0,
+
+         0.0,  1.0,  0.0,
+         0.0,  1.0,  0.0,
+         0.0,  1.0,  0.0,
+         0.0,  1.0,  0.0,
+
+         0.0, -1.0,  0.0,
+         0.0, -1.0,  0.0,
+         0.0, -1.0,  0.0,
+         0.0, -1.0,  0.0,
+
+         1.0,  0.0,  0.0,
+         1.0,  0.0,  0.0,
+         1.0,  0.0,  0.0,
+         1.0,  0.0,  0.0,
+
+        -1.0,  0.0,  0.0,
+        -1.0,  0.0,  0.0,
+        -1.0,  0.0,  0.0,
+        -1.0,  0.0,  0.0,    
+    ]
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW)
+    cubeVertexNormalBuffer.itemSize = 3
+    cubeVertexNormalBuffer.numItems = 24
 }
 
 // var neheTexture
-var crateTextures = []
+// var crateTextures = []
+var crateTexture
 function initTexture(){
     var crateImage = new Image()
 
-    for (var i=0; i<3; i++){
-        var texture = gl.createTexture()
-        texture.image = crateImage
-        crateTextures.push(texture)
-    } 
-
+    // for (var i=0; i<3; i++){
+    //     var texture = gl.createTexture()
+    //     texture.image = crateImage
+    //     crateTextures.push(texture)
+    // } 
+    crateTexture = gl.createTexture()
+    crateTexture.image = crateImage
     crateImage.onload = function(){
-        handleLoadedTexture(crateTextures)
+        handleLoadedTexture(crateTexture)
         textureReady = true
     }
     crateImage.src = "crate.gif"
 }
 var textureReady = false
 
-function handleLoadedTexture(textures){
+function handleLoadedTexture(texture){
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
 
-    gl.bindTexture(gl.TEXTURE_2D, textures[0])
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[0].image)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
+    // gl.bindTexture(gl.TEXTURE_2D, textures[0])
+    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[0].image)
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST)
 
-    gl.bindTexture(gl.TEXTURE_2D, textures[1])
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[1].image)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+    // gl.bindTexture(gl.TEXTURE_2D, textures[1])
+    // gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[1].image)
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+    // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     
-    gl.bindTexture(gl.TEXTURE_2D, textures[2])
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[2].image)
+    gl.bindTexture(gl.TEXTURE_2D, texture)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST)
     gl.generateMipmap(gl.TEXTURE_2D)
@@ -460,9 +582,48 @@ function drawScene(){
     gl.vertexAttribPointer(shaderProgram.textureCoordAttribute,
     cubeVertexTexturCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
+    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer)
+    gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
+    cubeVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
     gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, crateTextures[filter])
+    gl.bindTexture(gl.TEXTURE_2D, crateTexture)
     gl.uniform1i(shaderProgram.samplerUniform, 0)
+
+    var lighting = document.getElementById("lighting").checked
+    gl.uniform1i(shaderProgram.useLightingUniform, lighting)
+
+    if (lighting){
+        gl.uniform3f(
+            shaderProgram.ambientColorUniform,
+            parseFloat(document.getElementById("ambientR").value),
+            parseFloat(document.getElementById("ambientG").value),
+            parseFloat(document.getElementById("ambientB").value)
+        )
+
+        var lightingDirection = [        
+            parseFloat(document.getElementById("lightDirectionX").value),
+            parseFloat(document.getElementById("lightDirectionY").value),
+            parseFloat(document.getElementById("lightDirectionZ").value),
+        ]
+
+        var adjustedLD = new vec3(lightingDirection)
+        adjustedLD.normalize()
+        adjustedLD.scale(-1)
+        gl.uniform3fv(shaderProgram.lightingDirectionUniform, adjustedLD)
+
+        gl.uniform3f(
+            shaderProgram.directionalColorUniform,
+            parseFloat(document.getElementById("directionalR").value),
+            parseFloat(document.getElementById("directionalG").value),
+            parseFloat(document.getElementById("directionalB").value)
+        )
+    }
+
+    var normalMatrix = new mat3()
+    normalMatrix.fromInverseMat4(mvMatrix)
+    normalMatrix.transpose()
+    gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, normalMatrix)
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)
     setMatrixUniforms()
