@@ -2,6 +2,14 @@
 <meta charset="utf-8">
 <html>
     <style>
+        #loadingText{
+            position: absolute;
+            top: 50%;
+            left: 30%;
+            font-size: 2em;
+            color: white;
+        }
+
         .collapsable, #show, #hide:target{
             display: none;
         }
@@ -44,12 +52,10 @@
 
         uniform sampler2D uSampler;
 
-        uniform vec3 uColor;
-
         void main(void){
             //gl_FragColor = vColor;
             vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-            gl_FragColor = textureColor * vec4(uColor, 1.0);
+            gl_FragColor = textureColor;
         }
     </script>
     <script id="shader-vs" type="x-shader/x-vertex">
@@ -66,20 +72,21 @@
             vTextureCoord = aTextureCoord;
         }
     </script>
-    
+    <script src="world.js">
+    </script>
     <script src="3d2.js">
     </script>
     <title>Lessons</title>
     <body onload="webGLStart()">
         <canvas id="c3d" width="640" height="480"></canvas>
+        <div id="loadingtext">
+            Loading World...
+        </div>
         <div class="info">
             <a href="#hide" id="hide"><button>show options</button></a>
             <a href="#show" id="show"><button>hide options</button></a>
             
             <div class="collapsable">
-                <input type="checkbox" id="twinkle">
-                    Twinkle
-                </input>
             </div>
 
             

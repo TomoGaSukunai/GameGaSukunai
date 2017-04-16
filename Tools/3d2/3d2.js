@@ -189,72 +189,6 @@ class vec3 extends Float32Array{
     }
 }
 
-class Star{
-    constructor(startingDistance, rotationSpeed){
-        this.angle = 0 
-        this.dist = startingDistance
-        this.rotationSpeed = rotationSpeed
-
-        this.randomiseColors()
-    }
-    randomiseColors(){
-        this.r = Math.random()
-        this.g = Math.random()
-        this.b = Math.random()
-
-        this.twinkleR = Math.random()
-        this.twinkleG = Math.random()
-        this.twinkleB = Math.random()
-    }
-    draw(tilt, spin, twinkle){
-        mvPushMatrix()
-
-        mvMatrix.rotate(degToRad(this.angle), [0.0, 1.0, 0.0])
-        mvMatrix.translate([this.dist, 0.0, 0.0])
-
-        mvMatrix.rotate(degToRad(-this.angle), [0.0, 1.0, 0.0])
-        mvMatrix.rotate(degToRad(-tilt), [1.0, 0.0, 0.0])
-
-        if (twinkle){
-            gl.uniform3f(shaderProgram.colorUniform, 
-            this.twinkleR, this.twinkleG, this.twinkleB)
-            drawStar()
-        }
-
-        //mvMatrix.rotate(degToRad(spin),[0.0, 0.0, 1.0])
-        gl.uniform3f(shaderProgram.colorUniform, this.r, this.g, this.b)
-        drawStar()
-
-        mvPopMatrix()
-    }
-    animate(elapsedTime){
-        this.angle += this.rotationSpeed * effectiveFPMS * elapsedTime
-        this.dist -= 0.01 * effectiveFPMS * elapsedTime
-
-        if (this.dist < 0.0){
-            this.dist += 5.0;
-            this.randomiseColors()
-        }
-    }
-}
-var effectiveFPMS = 60/1000
-function drawStar(){
-    gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, starTexture)
-    gl.uniform1i(shaderProgram.samplerUniform, 0)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, starVertexTextureCoordBuffer)
-    gl.vertexAttribPointer(shaderProgram.textureCoordAttribute,
-    starVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, starVertexPositionBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-    starVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
-
-    setMatrixUniforms()
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, starVertexPositionBuffer.numItems)
-}
-
 var gl
 function initGL(canvas){
     try{
@@ -284,11 +218,9 @@ function initShaders(){
     shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord")
     gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute)
 
-
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix")
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix")
-    shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")
-    shaderProgram.colorUniform = gl.getUniformLocation(shaderProgram, "uColor")
+    shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")    
 }
 
 function getShader(gl, id){
@@ -306,45 +238,16 @@ function getShader(gl, id){
     return shader
 }
 
-
-var starVertexPositionBuffer
-var starVertexTextureCoordBuffer
-function initBuffers(){    
-    starVertexPositionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, starVertexPositionBuffer)
-    var vertices = [
-        -1.0, -1.0,  0.0,
-         1.0, -1.0,  0.0,
-        -1.0,  1.0,  0.0,
-         1.0,  1.0,  0.0,
-        ]
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
-    starVertexPositionBuffer.itemSize = 3
-    starVertexPositionBuffer.numItems = 4
-   
-    starVertexTextureCoordBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, starVertexTextureCoordBuffer)
-    var textureCoords =[
-        0.0, 0.0,
-        1.0, 0.0,
-        0.0, 1.0,
-        1.0, 1.0,
-    ]
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW)
-    starVertexTextureCoordBuffer.itemSize = 2
-    starVertexTextureCoordBuffer.numItems = 4
-}
-
-var starTexture
+var mudTexture
 function initTexture(){
 
-    starTexture = gl.createTexture()
-    starTexture.image = new Image()
-    starTexture.image.onload = function(){
-        handleLoadedTexture(starTexture)
+    mudTexture = gl.createTexture()
+    mudTexture.image = new Image()
+    mudTexture.image.onload = function(){
+        handleLoadedTexture(mudTexture)
         textureReady = true
     }
-    starTexture.image.src = "star.gif"
+    mudTexture.image.src = "mud.gif"
 }
 var textureReady = false
 
@@ -379,17 +282,37 @@ function degToRad(degrees){
     return degrees * Math.PI / 180.0
 }
 
-var stars = []
-function initWorldObjects(){
-    var numStars = 50
-    for(var i=0; i<numStars; i++){
-        stars.push(new Star((i/numStars)*5.0, i/numStars))
+var worldVertexPositionBuffer
+var worldVertexTextureCoordBuffer
+function loadWorld(){
+    var vertexCount = 0
+    var vertexPositions = []
+    var vertexTextureCoords = []
+    for (var i=0; i<world.length;){
+        vertexPositions.push(world[i++])
+        vertexPositions.push(world[i++])
+        vertexPositions.push(world[i++])
+        
+        vertexTextureCoords.push(world[i++])
+        vertexTextureCoords.push(world[i++])
+        
+        vertexCount += 1
     }
-}
+    worldVertexPositionBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, worldVertexPositionBuffer)    
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW)
+    worldVertexPositionBuffer.itemSize = 3
+    worldVertexPositionBuffer.numItems = vertexCount
 
-var zoom = -15.0
-var tilt = 90
-var spin = 0
+   
+    worldVertexTextureCoordBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, worldVertexTextureCoordBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexTextureCoords), gl.STATIC_DRAW)
+    worldVertexTextureCoordBuffer.itemSize = 2
+    worldVertexTextureCoordBuffer.numItems = vertexCount
+
+    document.getElementById("loadingtext").style.display = "none"
+}
 
 function drawScene(){        
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight)
@@ -397,19 +320,25 @@ function drawScene(){
 
     pMatrix.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0)
     
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE)
-    gl.enable(gl.BLEND)
-    
     mvMatrix.identity()
-    mvMatrix.translate([0.0, 0.0, zoom])
-    mvMatrix.rotate(degToRad(tilt), [1.0, 0.0, 0.0])
+    mvMatrix.rotate(degToRad(-pitch), [1.0, 0.0, 0.0])
+    mvMatrix.rotate(degToRad(-yaw), [0.0, 1.0, 0.0])
+    mvMatrix.translate([-xPos, -yPos, -zPos])
 
-    var twinkle = document.getElementById("twinkle").checked
-    
-    for(var i in stars){
-        stars[i].draw(tilt, spin, twinkle)
-        spin += 0.1
-    }
+    gl.activeTexture(gl.TEXTURE0)
+    gl.bindTexture(gl.TEXTURE_2D, mudTexture)
+    gl.uniform1i(shaderProgram.samplerUniform, 0)
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, worldVertexTextureCoordBuffer)
+    gl.vertexAttribPointer(shaderProgram.textureCoordAttribute,
+    worldVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, worldVertexPositionBuffer)
+    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
+    worldVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
+    setMatrixUniforms()
+    gl.drawArrays(gl.TRIANGLES, 0, worldVertexPositionBuffer.numItems)
 }
 
 var currentlyPressedKeys = {}
@@ -422,38 +351,68 @@ function handleKeyDown(event){
         }
     }
 }
-
 function handleKeyUp(event){
     currentlyPressedKeys[event.keyCode] = false
 }
 
+var pitch = 0
+var pitchRate = 0
+
+var yaw = 0
+var yawRate = 0
+
+var xPos = 0
+var yPos = 0.4
+var zPos = 0
+var speed = 0
 function handleKeys(){
+    pitchRate = 0
     if (currentlyPressedKeys[33]){
         //page up
-        zoom -= 0.1
+        pitchRate = 0.1
     }
     if (currentlyPressedKeys[34]){
         //page down
-        zoom += 0.1
+        pitchRate = -0.1
     }
-    if (currentlyPressedKeys[38]){
-        //up
-        tilt += 2
+
+    yawRate = 0
+    if (currentlyPressedKeys[37] || currentlyPressedKeys[65]){
+        // left or A
+        yawRate = 0.1
     }
-    if (currentlyPressedKeys[40]){
-        //down
-        tilt -= 2
+    if (currentlyPressedKeys[39] || currentlyPressedKeys[68]){
+        // right or D
+        yawRate = -0.1
+    }
+
+    speed = 0
+    if (currentlyPressedKeys[38] || currentlyPressedKeys[87]){
+        // up or W
+        speed = 0.003
+    }
+    if (currentlyPressedKeys[40] || currentlyPressedKeys[83]){
+        speed = -0.003
     }    
 }
 
 var lastTime = 0
+var joggingAngle = 0
 function animate(){
     var now = Date.now()
+    
     if (lastTime !== 0){
         var elapsed = now - lastTime
-        for (var i in stars){
-            stars[i].animate(elapsed)
+        if (speed !=0){
+            xPos -= Math.sin(degToRad(yaw)) * speed * elapsed
+            zPos -= Math.cos(degToRad(yaw)) * speed * elapsed
+
+            joggingAngle += elapsed * 0.6
+            yPos = Math.sin(degToRad(joggingAngle)) / 20 + 0.4
         }
+        pitch += pitchRate * elapsed
+        yaw += yawRate * elapsed
+
     }
     lastTime = now
 }
@@ -475,15 +434,14 @@ function webGLStart(){
     var canvas = document.getElementById("c3d")
     initGL(canvas)
     initShaders()
-    initBuffers()
     initTexture()
-    initWorldObjects()
+    loadWorld()
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
+    gl.enable(gl.DEPTH_TEST)
 
     document.onkeydown = handleKeyDown
     document.onkeyup = handleKeyUp
 
     tick()
 }
-
