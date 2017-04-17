@@ -113,6 +113,18 @@ class mat4 extends Float32Array{
     copy(){
         return new mat4(this)
     }
+    multiply(b){
+        var a = this.copy()
+
+        for (var i=0; i<4; i++){
+            for(var j=0; j<4; j++){
+                this[i*4+j] = 0
+                for(var k=0; k<4; k++){
+                    this[i*4+j] += a[k*4+j]*b[i*4+k]
+                }
+            }
+        }
+    }
 }
 
 class mat3 extends Float32Array{
@@ -218,9 +230,17 @@ function initShaders(){
     shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord")
     gl.enableVertexAttribArray(shaderProgram.textureCoordAttribute)
 
+    shaderProgram.vertexNormalAttribute = gl.getAttribLocation(shaderProgram, "aVertexNormal")
+    gl.enableVertexAttribArray(shaderProgram.vertexNormalAttribute)
+
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix")
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix")
-    shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")    
+    shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix")
+    shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")
+    shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor")
+    shaderProgram.directionalColorUniform = gl.getUniformLocation(shaderProgram, "uDirectionalColor")
+    shaderProgram.lightingDirectionUniform = gl.getUniformLocation(shaderProgram, "uLightingDirection")
+    shaderProgram.useLightingUniform = gl.getUniformLocation(shaderProgram, "uUseLighting")
 }
 
 function getShader(gl, id){
@@ -238,16 +258,16 @@ function getShader(gl, id){
     return shader
 }
 
-var mudTexture
+var moonTexture
 function initTexture(){
 
-    mudTexture = gl.createTexture()
-    mudTexture.image = new Image()
-    mudTexture.image.onload = function(){
-        handleLoadedTexture(mudTexture)
+    moonTexture = gl.createTexture()
+    moonTexture.image = new Image()
+    moonTexture.image.onload = function(){
+        handleLoadedTexture(moonTexture)
         textureReady = true
     }
-    mudTexture.image.src = "mud.gif"
+    moonTexture.image.src = "moon.gif"
 }
 var textureReady = false
 
@@ -268,6 +288,12 @@ var pMatrix = new mat4()
 function setMatrixUniforms(){
     gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix)
     gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix)
+
+    var normalMatrix = new mat3()
+    normalMatrix.fromInverseMat4(mvMatrix)
+    normalMatrix.transpose()
+
+    gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, normalMatrix)
 }
 
 var mvMatrixStack = []
@@ -282,36 +308,75 @@ function degToRad(degrees){
     return degrees * Math.PI / 180.0
 }
 
-var worldVertexPositionBuffer
-var worldVertexTextureCoordBuffer
-function loadWorld(){
-    var vertexCount = 0
-    var vertexPositions = []
-    var vertexTextureCoords = []
-    for (var i=0; i<world.length;){
-        vertexPositions.push(world[i++])
-        vertexPositions.push(world[i++])
-        vertexPositions.push(world[i++])
-        
-        vertexTextureCoords.push(world[i++])
-        vertexTextureCoords.push(world[i++])
-        
-        vertexCount += 1
+var moonVertexPositionBuffer
+var moonVertexTextureCoordBuffer
+var moonVertexNormalBuffer
+var moonVertexIndexBuffer
+function initBuffers(){
+    var latitudeBands = 30
+    var longitudeBands = 30
+    var radius = 2
+
+    var vertexPositionData = []
+    var normalData = []
+    var textureCoordData = []
+    for (var lat = 0; lat<=latitudeBands; lat++){
+        var theta = lat * Math.PI / latitudeBands
+        var sinTheta = Math.sin(theta)
+        var cosTheta = Math.cos(theta)
+        var vertexCount = 0
+        for(var lon = 0; lon<=longitudeBands; lon++){
+            var phi = lon * 2 * Math.PI / longitudeBands
+            var sinPhi = Math.sin(phi)
+            var cosPhi = Math.cos(phi)
+
+            var x = cosPhi * sinTheta
+            var y = cosTheta
+            var z = sinPhi * sinTheta
+
+            var u = 1 - (lon/longitudeBands)
+            var v = 1 - (lat/latitudeBands)
+
+            normalData.push(x, y, z)
+            textureCoordData.push(u, v)
+            vertexPositionData.push(radius * x, radius * y, radius * z)
+            vertexCount ++ 
+        }        
     }
-    worldVertexPositionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, worldVertexPositionBuffer)    
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW)
-    worldVertexPositionBuffer.itemSize = 3
-    worldVertexPositionBuffer.numItems = vertexCount
 
-   
-    worldVertexTextureCoordBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, worldVertexTextureCoordBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexTextureCoords), gl.STATIC_DRAW)
-    worldVertexTextureCoordBuffer.itemSize = 2
-    worldVertexTextureCoordBuffer.numItems = vertexCount
+    var indexData = []
+    for (var lat=0; lat<latitudeBands; lat++){
+        for(var lon=0; lon<longitudeBands; lon++){
+            var first = lat * (longitudeBands + 1) + lon
+            var second = first + longitudeBands + 1
+            indexData.push(first, second, first + 1)
+            indexData.push(second, second + 1, first + 1)
+        }
+    }
 
-    document.getElementById("loadingtext").style.display = "none"
+    moonVertexPositionBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer)    
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositionData), gl.STATIC_DRAW)
+    moonVertexPositionBuffer.itemSize = 3
+    moonVertexPositionBuffer.numItems = vertexCount
+  
+    moonVertexTextureCoordBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordData), gl.STATIC_DRAW)
+    moonVertexTextureCoordBuffer.itemSize = 2
+    moonVertexTextureCoordBuffer.numItems = vertexCount
+
+    moonVertexNormalBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalData), gl.STATIC_DRAW)
+    moonVertexNormalBuffer.itemSize = 3
+    moonVertexNormalBuffer.numItems = vertexCount
+
+    moonVertexIndexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW)
+    moonVertexIndexBuffer.itemSize = 1
+    moonVertexIndexBuffer.numItems = indexData.length
 }
 
 function drawScene(){        
@@ -320,101 +385,95 @@ function drawScene(){
 
     pMatrix.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0)
     
-    mvMatrix.identity()
-    mvMatrix.rotate(degToRad(-pitch), [1.0, 0.0, 0.0])
-    mvMatrix.rotate(degToRad(-yaw), [0.0, 1.0, 0.0])
-    mvMatrix.translate([-xPos, -yPos, -zPos])
+    var lighting = document.getElementById("lighting").checked
+    gl.uniform1i(shaderProgram.useLightingUniform, lighting)
+ 
+    if (lighting){
+        gl.uniform3f(
+            shaderProgram.ambientColorUniform,
+            parseFloat(document.getElementById("ambientR").value),
+            parseFloat(document.getElementById("ambientG").value),
+            parseFloat(document.getElementById("ambientB").value)
+        )
+
+        var lightingDirection = [        
+            parseFloat(document.getElementById("lightDirectionX").value),
+            parseFloat(document.getElementById("lightDirectionY").value),
+            parseFloat(document.getElementById("lightDirectionZ").value),
+        ]
+
+        var adjustedLD = new vec3(lightingDirection)
+        adjustedLD.normalize()
+        adjustedLD.scale(-1)
+        gl.uniform3fv(shaderProgram.lightingDirectionUniform, adjustedLD)
+
+        gl.uniform3f(
+            shaderProgram.directionalColorUniform,
+            parseFloat(document.getElementById("directionalR").value),
+            parseFloat(document.getElementById("directionalG").value),
+            parseFloat(document.getElementById("directionalB").value)
+        )
+    }
+
+    mvMatrix.identity()    
+    mvMatrix.translate([0.0, 0.0, -6.0])
+
+    mvMatrix.multiply(moonRotationMatrix)
 
     gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, mudTexture)
+    gl.bindTexture(gl.TEXTURE_2D, moonTexture)
     gl.uniform1i(shaderProgram.samplerUniform, 0)
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, worldVertexTextureCoordBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer)
     gl.vertexAttribPointer(shaderProgram.textureCoordAttribute,
-    worldVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, worldVertexPositionBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer)
     gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
-    worldVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
-    setMatrixUniforms()
-    gl.drawArrays(gl.TRIANGLES, 0, worldVertexPositionBuffer.numItems)
-}
-
-var currentlyPressedKeys = {}
-function handleKeyDown(event){
-    currentlyPressedKeys[event.keyCode] = true
-    if (String.fromCharCode(event.keyCode) == "F"){
-        filter++
-        if (filter == 3){
-            filter = 0
-        }
-    }
-}
-function handleKeyUp(event){
-    currentlyPressedKeys[event.keyCode] = false
-}
-
-var pitch = 0
-var pitchRate = 0
-
-var yaw = 0
-var yawRate = 0
-
-var xPos = 0
-var yPos = 0.4
-var zPos = 0
-var speed = 0
-function handleKeys(){
-    pitchRate = 0
-    if (currentlyPressedKeys[33]){
-        //page up
-        pitchRate = 0.1
-    }
-    if (currentlyPressedKeys[34]){
-        //page down
-        pitchRate = -0.1
-    }
-
-    yawRate = 0
-    if (currentlyPressedKeys[37] || currentlyPressedKeys[65]){
-        // left or A
-        yawRate = 0.1
-    }
-    if (currentlyPressedKeys[39] || currentlyPressedKeys[68]){
-        // right or D
-        yawRate = -0.1
-    }
-
-    speed = 0
-    if (currentlyPressedKeys[38] || currentlyPressedKeys[87]){
-        // up or W
-        speed = 0.003
-    }
-    if (currentlyPressedKeys[40] || currentlyPressedKeys[83]){
-        speed = -0.003
-    }    
-}
-
-var lastTime = 0
-var joggingAngle = 0
-function animate(){
-    var now = Date.now()
+    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer)
+    gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
+    moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
     
-    if (lastTime !== 0){
-        var elapsed = now - lastTime
-        if (speed !=0){
-            xPos -= Math.sin(degToRad(yaw)) * speed * elapsed
-            zPos -= Math.cos(degToRad(yaw)) * speed * elapsed
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer)
+    setMatrixUniforms()
 
-            joggingAngle += elapsed * 0.6
-            yPos = Math.sin(degToRad(joggingAngle)) / 20 + 0.4
-        }
-        pitch += pitchRate * elapsed
-        yaw += yawRate * elapsed
+    gl.drawElements(gl.TRIANGLES, moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0)
+}
 
+var mouseDown = false
+var lastX = null
+var lastY = null 
+
+var moonRotationMatrix = new mat4()
+moonRotationMatrix.identity()
+function handleMouseDown(e){
+    mouseDown = true
+    lastX = e.clientX
+    lastY = e.clientY
+}
+function handleMouseUp(e){
+    mouseDown = false
+}
+function handleMouseMove(e){
+    if (!mouseDown){
+        return
     }
-    lastTime = now
+    var newX = e.clientX
+    var newY = e.clientY
+
+    var deltaX = newX - lastX
+    var newRotationMatrix = new mat4()
+    newRotationMatrix.identity()
+    newRotationMatrix.rotate(degToRad(deltaX / 10), [0.0,1.0,0.0])
+
+    var deltaY = newY - lastY
+    newRotationMatrix.rotate(degToRad(deltaY / 10), [1.0,0.0,0.0])
+    newRotationMatrix.multiply(moonRotationMatrix)
+    moonRotationMatrix = newRotationMatrix
+    lastX = newX
+    lastY = newY
 }
 
 function tick(){
@@ -424,10 +483,7 @@ function tick(){
     if (!textureReady){
         return
     }
-
-    handleKeys()
     drawScene()
-    animate()
 }
 
 function webGLStart(){
@@ -435,13 +491,14 @@ function webGLStart(){
     initGL(canvas)
     initShaders()
     initTexture()
-    loadWorld()
+    initBuffers()
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.enable(gl.DEPTH_TEST)
 
-    document.onkeydown = handleKeyDown
-    document.onkeyup = handleKeyUp
+    canvas.onmousedown = handleMouseDown
+    document.onmouseup = handleMouseUp
+    document.onmousemove = handleMouseMove
 
     tick()
 }

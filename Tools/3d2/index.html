@@ -48,28 +48,47 @@
     <script id="shader-fs" type="x-shader/x-fragment">
         precision mediump float;
         
-        varying vec2 vTextureCoord;           
+        varying vec2 vTextureCoord;
+        varying vec3 vLinghtWeighting;
 
         uniform sampler2D uSampler;
 
-        void main(void){
-            //gl_FragColor = vColor;
+        void main(void){            
             vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-            gl_FragColor = textureColor;
+            gl_FragColor = vec4(textureColor.rgb * vLinghtWeighting, textureColor.a);
         }
     </script>
     <script id="shader-vs" type="x-shader/x-vertex">
         attribute vec3 aVertexPosition;
+        attribute vec3 aVertexNormal;
         attribute vec2 aTextureCoord;
-
+        
+        
         uniform mat4 uMVMatrix;
-        uniform mat4 uPMatrix;
+        uniform mat4 uPMatrix;       
+        uniform mat3 uNMatrix;
+
+        uniform vec3 uAmbientColor;
+
+        uniform vec3 uLightingDirection;
+        uniform vec3 uDirectionalColor;
+
+        uniform bool uUseLighting;
 
         varying vec2 vTextureCoord;
+        varying vec3 vLinghtWeighting;
 
         void main(void){
             gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
             vTextureCoord = aTextureCoord;
+
+            if (!uUseLighting){
+                vLinghtWeighting = vec3(1.0, 1.0, 1.0);
+            }else{
+                vec3 transformeNormal = uNMatrix * aVertexNormal;
+                float directionalLightWeighting = max(dot(transformeNormal, uLightingDirection), 0.0);
+                vLinghtWeighting = uAmbientColor + uDirectionalColor * directionalLightWeighting;
+            }
         }
     </script>
     <script src="world.js">
@@ -79,17 +98,40 @@
     <title>Lessons</title>
     <body onload="webGLStart()">
         <canvas id="c3d" width="640" height="480"></canvas>
-        <div id="loadingtext">
-            Loading World...
-        </div>
+
         <div class="info">
             <a href="#hide" id="hide"><button>show options</button></a>
             <a href="#show" id="show"><button>hide options</button></a>
             
             <div class="collapsable">
-            </div>
-
-            
+                 <input type="checkbox" id="lighting" checked>
+                     Use lighting
+                 </input>
+                 <h3>Directional light:</h3>
+                 <table style="border: 0; padding: 10px; color:#339933;">
+                     <tr>
+                         <td><b>Direction:</b></td>
+                         <td>X: <input type="number" id="lightDirectionX" value="-0.25" /></td>
+                         <td>Y: <input type="number" id="lightDirectionY" value="-0.25" /></td>
+                         <td>Z: <input type="number" id="lightDirectionZ" value="-1.0" /></td>
+                     </tr>
+                     <tr>
+                         <td><b>Color:</b></td>
+                         <td>R: <input type="number" id="directionalR" value="0.8" /></td>
+                         <td>G: <input type="number" id="directionalG" value="0.8" /></td>
+                         <td>B: <input type="number" id="directionalB" value="0.8" /></td>
+                     </tr>
+                 </table>
+                 <h3>Ambient light:</h3>
+                 <table style="border: 0; padding: 10px;color:#339933;">
+                     <tr>
+                         <td><b>Color:</b></td>
+                         <td>R: <input type="number" id="ambientR" value="0.2" /></td>
+                         <td>G: <input type="number" id="ambientG" value="0.2" /></td>
+                         <td>B: <input type="number" id="ambientB" value="0.2" /></td>
+                     </tr>
+                 </table>
+            </div>            
         </div>
     </body>
 </html>
