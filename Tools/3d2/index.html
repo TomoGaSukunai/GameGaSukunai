@@ -70,8 +70,8 @@
 
         uniform vec3 uAmbientColor;
 
-        uniform vec3 uLightingDirection;
-        uniform vec3 uDirectionalColor;
+        uniform vec3 uPointLightingLocation;
+        uniform vec3 uPointLightingColor;
 
         uniform bool uUseLighting;
 
@@ -79,15 +79,19 @@
         varying vec3 vLinghtWeighting;
 
         void main(void){
-            gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+            vec4 mvPosition = uMVMatrix * vec4(aVertexPosition, 1.0);
+            gl_Position = uPMatrix * mvPosition;
+
             vTextureCoord = aTextureCoord;
 
             if (!uUseLighting){
                 vLinghtWeighting = vec3(1.0, 1.0, 1.0);
             }else{
-                vec3 transformeNormal = uNMatrix * aVertexNormal;
-                float directionalLightWeighting = max(dot(transformeNormal, uLightingDirection), 0.0);
-                vLinghtWeighting = uAmbientColor + uDirectionalColor * directionalLightWeighting;
+                vec3 lightDirection = normalize(uPointLightingLocation - mvPosition.xyz);
+
+                vec3 transformedNormal = uNMatrix * aVertexNormal;
+                float directionalLightWeighting = max(dot(transformedNormal, lightDirection), 0.0);
+                vLinghtWeighting = uAmbientColor + uPointLightingColor * directionalLightWeighting;
             }
         }
     </script>
@@ -107,19 +111,19 @@
                  <input type="checkbox" id="lighting" checked>
                      Use lighting
                  </input>
-                 <h3>Directional light:</h3>
+                 <h3>Point light:</h3>
                  <table style="border: 0; padding: 10px; color:#339933;">
                      <tr>
-                         <td><b>Direction:</b></td>
-                         <td>X: <input type="number" id="lightDirectionX" value="-0.25" /></td>
-                         <td>Y: <input type="number" id="lightDirectionY" value="-0.25" /></td>
-                         <td>Z: <input type="number" id="lightDirectionZ" value="-1.0" /></td>
+                         <td><b>Position:</b></td>
+                         <td>X: <input type="number" id="lightPositionX" value="0.0" /></td>
+                         <td>Y: <input type="number" id="lightPositionY" value="0.0" /></td>
+                         <td>Z: <input type="number" id="lightPositionZ" value="-20.0" /></td>
                      </tr>
                      <tr>
                          <td><b>Color:</b></td>
-                         <td>R: <input type="number" id="directionalR" value="0.8" /></td>
-                         <td>G: <input type="number" id="directionalG" value="0.8" /></td>
-                         <td>B: <input type="number" id="directionalB" value="0.8" /></td>
+                         <td>R: <input type="number" id="pointR" value="0.8" /></td>
+                         <td>G: <input type="number" id="pointG" value="0.8" /></td>
+                         <td>B: <input type="number" id="pointB" value="0.8" /></td>
                      </tr>
                  </table>
                  <h3>Ambient light:</h3>
