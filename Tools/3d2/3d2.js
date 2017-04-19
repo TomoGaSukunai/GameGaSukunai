@@ -212,17 +212,24 @@ function initGL(canvas){
     }
 }
 
-var shaderProgram
+var currentProgram
+var perVertexProgram
+var perFragmentProgram
 function initShaders(){
-    var fragmentShader = getShader(gl, "shader-fs")
-    var vertexShader = getShader(gl, "shader-vs")
+    perVertexProgram = createProgram("per-vertex-lighting-fs", "per-vertex-lighting-vs")
+    perFragmentProgram = createProgram("per-fragment-lighting-fs", "per-fragment-lighting-vs")
+}
 
-    shaderProgram = gl.createProgram()
+function createProgram(fs_id, vs_id){
+    var fragmentShader = getShader(gl, fs_id)
+    var vertexShader = getShader(gl, vs_id)
+
+    var shaderProgram = gl.createProgram()
     gl.attachShader(shaderProgram, vertexShader)
     gl.attachShader(shaderProgram, fragmentShader)
     gl.linkProgram(shaderProgram)
 
-    gl.useProgram(shaderProgram)
+    //gl.useProgram(shaderProgram)
 
     shaderProgram.vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition")
     gl.enableVertexAttribArray(shaderProgram.vertexPositionAttribute)
@@ -241,6 +248,9 @@ function initShaders(){
     shaderProgram.pointlightLocationUniform = gl.getUniformLocation(shaderProgram, "uPointLightingLocation")
     shaderProgram.pointlightColorUniform = gl.getUniformLocation(shaderProgram, "uPointLightingColor")
     shaderProgram.useLightingUniform = gl.getUniformLocation(shaderProgram, "uUseLighting")
+    shaderProgram.useTexturesUniform = gl.getUniformLocation(shaderProgram, "uUseTextures")
+
+    return shaderProgram;
 }
 
 function getShader(gl, id){
@@ -295,14 +305,14 @@ function handleLoadedTexture(texture){
 var mvMatrix = new mat4()
 var pMatrix = new mat4()
 function setMatrixUniforms(){
-    gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix)
-    gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix)
+    gl.uniformMatrix4fv(currentProgram.pMatrixUniform, false, pMatrix)
+    gl.uniformMatrix4fv(currentProgram.mvMatrixUniform, false, mvMatrix)
 
     var normalMatrix = new mat3()
     normalMatrix.fromInverseMat4(mvMatrix)
     normalMatrix.transpose()
 
-    gl.uniformMatrix3fv(shaderProgram.nMatrixUniform, false, normalMatrix)
+    gl.uniformMatrix3fv(currentProgram.nMatrixUniform, false, normalMatrix)
 }
 
 var mvMatrixStack = []
@@ -331,7 +341,7 @@ var cubeVertexIndexBuffer
 function initBuffers(){
     var latitudeBands = 30
     var longitudeBands = 30
-    var radius = 2
+    var radius = 1
 
     var vertexPositionData = []
     var normalData = []
@@ -526,26 +536,37 @@ function drawScene(){
 
     pMatrix.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0)
     
+    var perFragmentLighting = document.getElementById("per-fragment").checked
+    if (perFragmentLighting){
+        currentProgram = perFragmentProgram
+    }else{
+        currentProgram = perVertexProgram
+    }
+    gl.useProgram(currentProgram);
+
+    var textures = document.getElementById("textures").checked
+    gl.uniform1i(currentProgram.useTexturesUniform, textures)
+
     var lighting = document.getElementById("lighting").checked
-    gl.uniform1i(shaderProgram.useLightingUniform, lighting)
+    gl.uniform1i(currentProgram.useLightingUniform, lighting)
  
     if (lighting){
         gl.uniform3f(
-            shaderProgram.ambientColorUniform,
+            currentProgram.ambientColorUniform,
             parseFloat(document.getElementById("ambientR").value),
             parseFloat(document.getElementById("ambientG").value),
             parseFloat(document.getElementById("ambientB").value)
         )
 
         gl.uniform3f(
-            shaderProgram.pointlightLocationUniform,
+            currentProgram.pointlightLocationUniform,
             parseFloat(document.getElementById("lightPositionX").value),
             parseFloat(document.getElementById("lightPositionY").value),
             parseFloat(document.getElementById("lightPositionZ").value)
         )
 
         gl.uniform3f(
-            shaderProgram.pointlightColorUniform,
+            currentProgram.pointlightColorUniform,
             parseFloat(document.getElementById("pointR").value),
             parseFloat(document.getElementById("pointG").value),
             parseFloat(document.getElementById("pointB").value)
@@ -553,27 +574,27 @@ function drawScene(){
     }
 
     mvMatrix.identity()    
-    mvMatrix.translate([0.0, 0.0, -20.0])
+    mvMatrix.translate([0.0, 0.0, -5.0])
 
     mvPushMatrix()
 
     mvMatrix.rotate(degToRad(moonAngle),[0.0,1.0,0.0])
-    mvMatrix.translate([5.0,0.0,0.0])
+    mvMatrix.translate([2.0,0.0,0.0])
     
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, moonTexture)
-    gl.uniform1i(shaderProgram.samplerUniform, 0)
+    gl.uniform1i(currentProgram.samplerUniform, 0)
 
     gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer)
-    gl.vertexAttribPointer(shaderProgram.textureCoordAttribute,
+    gl.vertexAttribPointer(currentProgram.textureCoordAttribute,
     moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
+    gl.vertexAttribPointer(currentProgram.vertexPositionAttribute,
     moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
+    gl.vertexAttribPointer(currentProgram.vertexNormalAttribute,
     moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
     
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer)
@@ -586,22 +607,22 @@ function drawScene(){
     mvPushMatrix()
 
     mvMatrix.rotate(degToRad(cubeAngle),[0.0, 1.0, 0.0])
-    mvMatrix.translate([5.0, 0.0, 0.0])
+    mvMatrix.translate([1.25, 0.0, 0.0])
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute,
+    gl.vertexAttribPointer(currentProgram.vertexPositionAttribute,
     cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer)
-    gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute,
+    gl.vertexAttribPointer(currentProgram.vertexNormalAttribute,
     cubeVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer)
-    gl.vertexAttribPointer(shaderProgram.textureCoordAttribute,
+    gl.vertexAttribPointer(currentProgram.textureCoordAttribute,
     cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, crateTexture)
-    gl.uniform1i(shaderProgram.samplerUniform, 0)
+    gl.uniform1i(currentProgram.samplerUniform, 0)
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)    
     setMatrixUniforms()

@@ -45,24 +45,30 @@
             /*background: black;*/
         }
     </style>
-    <script id="shader-fs" type="x-shader/x-fragment">
+    <script id="per-vertex-lighting-fs" type="x-shader/x-fragment">
         precision mediump float;
         
         varying vec2 vTextureCoord;
         varying vec3 vLinghtWeighting;
 
+        uniform bool uUseTextures;
+
         uniform sampler2D uSampler;
 
-        void main(void){            
-            vec4 textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+        void main(void){
+            vec4 textureColor;
+            if (uUseTextures){
+                textureColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+            }else{
+                textureColor = vec4(1.0, 1.0, 1.0, 1.0);
+            }
             gl_FragColor = vec4(textureColor.rgb * vLinghtWeighting, textureColor.a);
         }
     </script>
-    <script id="shader-vs" type="x-shader/x-vertex">
+    <script id="per-vertex-lighting-vs" type="x-shader/x-vertex">
         attribute vec3 aVertexPosition;
         attribute vec3 aVertexNormal;
-        attribute vec2 aTextureCoord;
-        
+        attribute vec2 aTextureCoord;        
         
         uniform mat4 uMVMatrix;
         uniform mat4 uPMatrix;       
@@ -95,6 +101,63 @@
             }
         }
     </script>
+    <script id="per-fragment-lighting-fs" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec2 vTextureCoord;
+        varying vec3 vTransformedNormal;
+        varying vec4 vPosition;
+
+        uniform bool uUseLighting;
+        uniform bool uUseTextures;
+        
+        uniform vec3 uAmbientColor;
+
+        uniform vec3 uPointLightingLocation;
+        uniform vec3 uPointLightingColor;
+
+        uniform sampler2D uSampler;
+
+        void main(void){
+            vec3 lightWeighting;
+            if (!uUseLighting){
+                lightWeighting = vec3(1.0, 1.0, 1.0);                
+            }else{
+                vec3 lightDirection = normalize(uPointLightingLocation - vPosition.xyz);
+
+                float directionalLightWeighting = max(dot(normalize(vTransformedNormal), lightDirection), 0.0);
+                lightWeighting = uAmbientColor + uPointLightingColor * directionalLightWeighting;
+            }
+            vec4 fragmentColor;
+            if (uUseTextures){
+                fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+            }else{
+                fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
+            }
+            gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
+        }   
+        
+    </script>
+    <script id="per-fragment-lighting-vs" type="x-shader/x-vertex">
+        attribute vec3 aVertexPosition;
+        attribute vec3 aVertexNormal;
+        attribute vec2 aTextureCoord;        
+        
+        uniform mat4 uMVMatrix;
+        uniform mat4 uPMatrix;       
+        uniform mat3 uNMatrix;
+        
+        varying vec2 vTextureCoord;
+        varying vec3 vTransformedNormal;
+        varying vec4 vPosition;
+
+        void main(void){
+            vPosition = uMVMatrix * vec4(aVertexPosition, 1.0);            
+            gl_Position = uPMatrix * vPosition;            
+            vTransformedNormal = uNMatrix * aVertexNormal;
+            vTextureCoord = aTextureCoord;
+        }
+    </script>
     <script src="world.js">
     </script>
     <script src="3d2.js">
@@ -111,13 +174,19 @@
                  <input type="checkbox" id="lighting" checked>
                      Use lighting
                  </input>
+                <input type="checkbox" id="per-fragment" checked>
+                     per-fragment lighting
+                 </input>
+                <input type="checkbox" id="textures" checked>
+                     Use textures
+                 </input>
                  <h3>Point light:</h3>
                  <table style="border: 0; padding: 10px; color:#339933;">
                      <tr>
                          <td><b>Position:</b></td>
                          <td>X: <input type="number" id="lightPositionX" value="0.0" /></td>
                          <td>Y: <input type="number" id="lightPositionY" value="0.0" /></td>
-                         <td>Z: <input type="number" id="lightPositionZ" value="-20.0" /></td>
+                         <td>Z: <input type="number" id="lightPositionZ" value="-5.0" /></td>
                      </tr>
                      <tr>
                          <td><b>Color:</b></td>
