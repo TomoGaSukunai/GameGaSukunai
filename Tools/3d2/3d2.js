@@ -213,11 +213,8 @@ function initGL(canvas){
 }
 
 var currentProgram
-var perVertexProgram
-var perFragmentProgram
 function initShaders(){
-    perVertexProgram = createProgram("per-vertex-lighting-fs", "per-vertex-lighting-vs")
-    perFragmentProgram = createProgram("per-fragment-lighting-fs", "per-fragment-lighting-vs")
+    currentProgram = createProgram("shader-fs", "shader-vs")
 }
 
 function createProgram(fs_id, vs_id){
@@ -244,12 +241,14 @@ function createProgram(fs_id, vs_id){
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix")
     shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix")
     shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")
-    shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor")
+    shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor")        
     shaderProgram.pointlightLocationUniform = gl.getUniformLocation(shaderProgram, "uPointLightingLocation")
-    shaderProgram.pointlightColorUniform = gl.getUniformLocation(shaderProgram, "uPointLightingColor")
+    shaderProgram.pointlightSpecularColorUniform = gl.getUniformLocation(shaderProgram, "uPointLightingSpecularColor")
+    shaderProgram.pointlightDiffuseColorUniform = gl.getUniformLocation(shaderProgram, "uPointLightingDiffuseColor")
     shaderProgram.useLightingUniform = gl.getUniformLocation(shaderProgram, "uUseLighting")
     shaderProgram.useTexturesUniform = gl.getUniformLocation(shaderProgram, "uUseTextures")
-
+    shaderProgram.useSpecularHighlightsUniform = gl.getUniformLocation(shaderProgram, "uShowSpecularHighlights")
+    shaderProgram.materialShininessUniform = gl.getUniformLocation(shaderProgram, "uMaterialShininess")
     return shaderProgram;
 }
 
@@ -268,25 +267,25 @@ function getShader(gl, id){
     return shader
 }
 
-var moonTexture
-var crateTexture
+var earthTexture
+var galvanizedTexture
 function initTexture(){
 
-    moonTexture = gl.createTexture()
-    moonTexture.image = new Image()
-    moonTexture.image.onload = function(){
-        handleLoadedTexture(moonTexture)
+    earthTexture = gl.createTexture()
+    earthTexture.image = new Image()
+    earthTexture.image.onload = function(){
+        handleLoadedTexture(earthTexture)
         textureReady++
     }    
-    moonTexture.image.src = "moon.gif"
+    earthTexture.image.src = "earth.jpg"
 
-    crateTexture = gl.createTexture()
-    crateTexture.image = new Image()
-    crateTexture.image.onload = function(){
-        handleLoadedTexture(crateTexture)
+    galvanizedTexture = gl.createTexture()
+    galvanizedTexture.image = new Image()
+    galvanizedTexture.image.onload = function(){
+        handleLoadedTexture(galvanizedTexture)
         textureReady++ 
     }
-    crateTexture.image.src = "crate.gif"
+    galvanizedTexture.image.src = "galvanized.jpg"
 }
 var textureReady = 0
 
@@ -327,207 +326,34 @@ function degToRad(degrees){
     return degrees * Math.PI / 180.0
 }
 
-var moonVertexPositionBuffer
-var moonVertexTextureCoordBuffer
-var moonVertexNormalBuffer
-var moonVertexIndexBuffer
+var teapotVertexPositionBuffer
+var teapotVertexNormalBuffer
+var teapotVertexTextureCoordBuffer
+var teapotVertexIndexBuffer
+function loadTeapot(teapotData){
+    teapotVertexNormalBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexNormals), gl.STATIC_DRAW)
+    teapotVertexNormalBuffer.itemSize = 3
+    teapotVertexNormalBuffer.numItems = teapotData.vertexNormals.length / 3
 
+    teapotVertexPositionBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexPositions), gl.STATIC_DRAW)
+    teapotVertexPositionBuffer.itemSize = 3
+    teapotVertexPositionBuffer.numItems = teapotData.vertexPositions.length / 3
 
-var cubeVertexPositionBuffer
-var cubeVertexTextureCoordBuffer
-var cubeVertexNormalBuffer
-var cubeVertexIndexBuffer
+    teapotVertexTextureCoordBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexTextureCoords), gl.STATIC_DRAW)
+    teapotVertexTextureCoordBuffer.itemSize = 2
+    teapotVertexTextureCoordBuffer.numItems = teapotData.vertexTextureCoords.length / 2
 
-function initBuffers(){
-    var latitudeBands = 30
-    var longitudeBands = 30
-    var radius = 1
-
-    var vertexPositionData = []
-    var normalData = []
-    var textureCoordData = []
-    for (var lat = 0; lat<=latitudeBands; lat++){
-        var theta = lat * Math.PI / latitudeBands
-        var sinTheta = Math.sin(theta)
-        var cosTheta = Math.cos(theta)
-        var vertexCount = 0
-        for(var lon = 0; lon<=longitudeBands; lon++){
-            var phi = lon * 2 * Math.PI / longitudeBands
-            var sinPhi = Math.sin(phi)
-            var cosPhi = Math.cos(phi)
-
-            var x = cosPhi * sinTheta
-            var y = cosTheta
-            var z = sinPhi * sinTheta
-
-            var u = 1 - (lon/longitudeBands)
-            var v = 1 - (lat/latitudeBands)
-
-            normalData.push(x, y, z)
-            textureCoordData.push(u, v)
-            vertexPositionData.push(radius * x, radius * y, radius * z)
-            vertexCount ++ 
-        }        
-    }
-
-    var indexData = []
-    for (var lat=0; lat<latitudeBands; lat++){
-        for(var lon=0; lon<longitudeBands; lon++){
-            var first = lat * (longitudeBands + 1) + lon
-            var second = first + longitudeBands + 1
-            indexData.push(first, second, first + 1)
-            indexData.push(second, second + 1, first + 1)
-        }
-    }
-
-    moonVertexPositionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer)    
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositionData), gl.STATIC_DRAW)
-    moonVertexPositionBuffer.itemSize = 3
-    moonVertexPositionBuffer.numItems = vertexCount
-  
-    moonVertexTextureCoordBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoordData), gl.STATIC_DRAW)
-    moonVertexTextureCoordBuffer.itemSize = 2
-    moonVertexTextureCoordBuffer.numItems = vertexCount
-
-    moonVertexNormalBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalData), gl.STATIC_DRAW)
-    moonVertexNormalBuffer.itemSize = 3
-    moonVertexNormalBuffer.numItems = vertexCount
-
-    moonVertexIndexBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer)
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW)
-    moonVertexIndexBuffer.itemSize = 1
-    moonVertexIndexBuffer.numItems = indexData.length
-
-    cubeVertexPositionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer)
-    var vertices = [
-            -1.0, -1.0,  1.0,
-             1.0, -1.0,  1.0,
-             1.0,  1.0,  1.0,
-            -1.0,  1.0,  1.0,
-
-            -1.0, -1.0, -1.0,
-            -1.0,  1.0, -1.0,
-             1.0,  1.0, -1.0,
-             1.0, -1.0, -1.0,
-
-            -1.0,  1.0, -1.0,
-            -1.0,  1.0,  1.0,
-             1.0,  1.0,  1.0,
-             1.0,  1.0, -1.0,
-
-            -1.0, -1.0, -1.0,
-             1.0, -1.0, -1.0,
-             1.0, -1.0,  1.0,
-            -1.0, -1.0,  1.0,
-
-             1.0, -1.0, -1.0,
-             1.0,  1.0, -1.0,
-             1.0,  1.0,  1.0,
-             1.0, -1.0,  1.0,
-
-            -1.0, -1.0, -1.0,
-            -1.0, -1.0,  1.0,
-            -1.0,  1.0,  1.0,
-            -1.0,  1.0, -1.0,
-    ]
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW)
-    cubeVertexPositionBuffer.itemSize = 3
-    cubeVertexPositionBuffer.numItems = 24
-
-    cubeVertexNormalBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer)
-    var normals = [
-             0.0,  0.0,  1.0,
-             0.0,  0.0,  1.0,
-             0.0,  0.0,  1.0,
-             0.0,  0.0,  1.0,
-
-             0.0,  0.0, -1.0,
-             0.0,  0.0, -1.0,
-             0.0,  0.0, -1.0,
-             0.0,  0.0, -1.0,
-
-             0.0,  1.0,  0.0,
-             0.0,  1.0,  0.0,
-             0.0,  1.0,  0.0,
-             0.0,  1.0,  0.0,
-
-             0.0, -1.0,  0.0,
-             0.0, -1.0,  0.0,
-             0.0, -1.0,  0.0,
-             0.0, -1.0,  0.0,
-
-             1.0,  0.0,  0.0,
-             1.0,  0.0,  0.0,
-             1.0,  0.0,  0.0,
-             1.0,  0.0,  0.0,
-
-            -1.0,  0.0,  0.0,
-            -1.0,  0.0,  0.0,
-            -1.0,  0.0,  0.0,
-            -1.0,  0.0,  0.0,
-    ]
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW)
-    cubeVertexNormalBuffer.itemSize = 3
-    cubeVertexNormalBuffer.numItems = 24
-
-    cubeVertexTextureCoordBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer)
-    var coords = [
-            0.0, 0.0,
-            1.0, 0.0,
-            1.0, 1.0,
-            0.0, 1.0,
-
-            1.0, 0.0,
-            1.0, 1.0,
-            0.0, 1.0,
-            0.0, 0.0,
-
-            0.0, 1.0,
-            0.0, 0.0,
-            1.0, 0.0,
-            1.0, 1.0,
-
-            1.0, 1.0,
-            0.0, 1.0,
-            0.0, 0.0,
-            1.0, 0.0,
-
-            1.0, 0.0,
-            1.0, 1.0,
-            0.0, 1.0,
-            0.0, 0.0,
-
-            0.0, 0.0,
-            1.0, 0.0,
-            1.0, 1.0,
-            0.0, 1.0,
-    ]
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(coords), gl.STATIC_DRAW)
-    cubeVertexTextureCoordBuffer.itemSize = 2
-    cubeVertexTextureCoordBuffer.numItems = 24
-
-    cubeVertexIndexBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)
-    var indices = [
-            0, 1, 2,      0, 2, 3,
-            4, 5, 6,      4, 6, 7,    
-            8, 9, 10,     8, 10, 11,
-            12, 13, 14,   12, 14, 15,
-            16, 17, 18,   16, 18, 19,
-            20, 21, 22,   20, 22, 23,
-    ]
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW)
-    cubeVertexIndexBuffer.itemSize = 1
-    cubeVertexIndexBuffer.numItems = 36
+    teapotVertexIndexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(teapotData.indices), gl.STATIC_DRAW)
+    teapotVertexIndexBuffer.itemSize = 1
+    teapotVertexIndexBuffer.numItems = teapotData.indices.length
 }
 
 function drawScene(){        
@@ -536,16 +362,11 @@ function drawScene(){
 
     pMatrix.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0)
     
-    var perFragmentLighting = document.getElementById("per-fragment").checked
-    if (perFragmentLighting){
-        currentProgram = perFragmentProgram
-    }else{
-        currentProgram = perVertexProgram
-    }
     gl.useProgram(currentProgram);
 
-    var textures = document.getElementById("textures").checked
-    gl.uniform1i(currentProgram.useTexturesUniform, textures)
+    var specularHighlights = document.getElementById("specular").checked
+    gl.uniform1i(currentProgram.useSpecularHighlightsUniform, specularHighlights)
+
 
     var lighting = document.getElementById("lighting").checked
     gl.uniform1i(currentProgram.useLightingUniform, lighting)
@@ -566,70 +387,57 @@ function drawScene(){
         )
 
         gl.uniform3f(
-            currentProgram.pointlightColorUniform,
-            parseFloat(document.getElementById("pointR").value),
-            parseFloat(document.getElementById("pointG").value),
-            parseFloat(document.getElementById("pointB").value)
+            currentProgram.pointlightSpecularColorUniform,
+            parseFloat(document.getElementById("specularR").value),
+            parseFloat(document.getElementById("specularG").value),
+            parseFloat(document.getElementById("specularB").value)
+        )
+
+        gl.uniform3f(
+            currentProgram.pointlightDiffuseColorUniform,
+            parseFloat(document.getElementById("diffuseR").value),
+            parseFloat(document.getElementById("diffuseG").value),
+            parseFloat(document.getElementById("diffuseB").value)
         )
     }
 
     mvMatrix.identity()    
-    mvMatrix.translate([0.0, 0.0, -5.0])
+    mvMatrix.translate([0.0, 0.0, -40.0])
 
-    mvPushMatrix()
-
-    mvMatrix.rotate(degToRad(moonAngle),[0.0,1.0,0.0])
-    mvMatrix.translate([2.0,0.0,0.0])
+    mvMatrix.rotate(degToRad(23.4), [1.0, 0.0, -1.0])
+    mvMatrix.rotate(degToRad(teapotAngle), [0.0, 1.0, 0.0])
     
-    gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, moonTexture)
-    gl.uniform1i(currentProgram.samplerUniform, 0)
+    var texture = document.getElementById("texture").value
+    gl.uniform1i(currentProgram.useTexturesUniform, texture != "none")
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexTextureCoordBuffer)
-    gl.vertexAttribPointer(currentProgram.textureCoordAttribute,
-    moonVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexPositionBuffer)
-    gl.vertexAttribPointer(currentProgram.vertexPositionAttribute,
-    moonVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, moonVertexNormalBuffer)
-    gl.vertexAttribPointer(currentProgram.vertexNormalAttribute,
-    moonVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
-    
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, moonVertexIndexBuffer)
-    setMatrixUniforms()
-
-    gl.drawElements(gl.TRIANGLES, moonVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0)
-
-    mvPopMatrix()
-
-    mvPushMatrix()
-
-    mvMatrix.rotate(degToRad(cubeAngle),[0.0, 1.0, 0.0])
-    mvMatrix.translate([1.25, 0.0, 0.0])
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer)
-    gl.vertexAttribPointer(currentProgram.vertexPositionAttribute,
-    cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexNormalBuffer)
-    gl.vertexAttribPointer(currentProgram.vertexNormalAttribute,
-    cubeVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexTextureCoordBuffer)
-    gl.vertexAttribPointer(currentProgram.textureCoordAttribute,
-    cubeVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
     gl.activeTexture(gl.TEXTURE0)
-    gl.bindTexture(gl.TEXTURE_2D, crateTexture)
+    if (texture == "earth"){
+        gl.bindTexture(gl.TEXTURE_2D, earthTexture)
+    }else if (texture == "galvanized"){
+        gl.bindTexture(gl.TEXTURE_2D, galvanizedTexture)
+    }    
     gl.uniform1i(currentProgram.samplerUniform, 0)
 
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer)    
+    gl.uniform1f(currentProgram.materialShininessUniform,
+    parseFloat(document.getElementById("shininess").value))
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer)
+    gl.vertexAttribPointer(currentProgram.vertexPositionAttribute,
+    teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer)
+    gl.vertexAttribPointer(currentProgram.vertexNormalAttribute,
+    teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer)
+    gl.vertexAttribPointer(currentProgram.textureCoordAttribute,
+    teapotVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer)
     setMatrixUniforms()
 
-    gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0)
-    
-    mvPopMatrix()
+    gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0)
 }
 
 var mouseDown = false
@@ -666,8 +474,7 @@ function handleMouseMove(e){
     lastY = newY
 }
 
-var moonAngle = 0
-var cubeAngle = 180
+var teapotAngle = 0
 
 var lastTime = 0
 function animate(){
@@ -675,8 +482,7 @@ function animate(){
     if(lastTime != 0){
         var elapsed = now - lastTime
 
-        moonAngle += 0.05 * elapsed
-        cubeAngle += 0.05 * elapsed
+        teapotAngle += 0.05 * elapsed        
     }
     lastTime = now 
 }
@@ -697,7 +503,7 @@ function webGLStart(){
     initGL(canvas)
     initShaders()
     initTexture()
-    initBuffers()
+    loadTeapot(require("./teapot.json"))
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.enable(gl.DEPTH_TEST)
