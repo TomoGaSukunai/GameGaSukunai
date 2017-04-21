@@ -52,11 +52,9 @@
         varying vec3 vTransformedNormal;
         varying vec4 vPosition;
 
-        uniform float uMaterialShininess;
-
-        uniform bool uShowSpecularHighlights;
+        uniform bool uUseColorMap;
+        uniform bool uUseSpecularMap;
         uniform bool uUseLighting;
-        uniform bool uUseTextures;
 
         uniform vec3 uAmbientColor;
         
@@ -64,7 +62,8 @@
         uniform vec3 uPointLightingSpecularColor;
         uniform vec3 uPointLightingDiffuseColor;
 
-        uniform sampler2D uSampler;
+        uniform sampler2D uColorMapSampler;
+        uniform sampler2D uSpecularMapSampler;
 
         void main(void){
             vec3 lightWeighting;
@@ -75,21 +74,23 @@
                 vec3 normal = normalize(vTransformedNormal);
 
                 float specularLightWeighting = 0.0;
-                if (uShowSpecularHighlights){
+                float shininess = 32.0;
+                if (uUseSpecularMap){
+                    shininess = texture2D(uSpecularMapSampler, vec2(vTextureCoord.s, vTextureCoord.t)).r * 255.0;
+                }
+                if (shininess < 255.0){
                     vec3 eyeDirection = normalize(-vPosition.xyz);
                     vec3 reflectionDirection = reflect(-lightDirection, normal);
-
-                    specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), uMaterialShininess);
+                    specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), shininess);
                 }
-
                 float diffuseLightWeighting = max(dot(normal, lightDirection), 0.0);
                 lightWeighting = uAmbientColor 
                     + uPointLightingSpecularColor * specularLightWeighting
                     + uPointLightingDiffuseColor * diffuseLightWeighting;
             }
             vec4 fragmentColor;
-            if (uUseTextures){
-                fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+            if (uUseColorMap){
+                fragmentColor = texture2D(uColorMapSampler, vec2(vTextureCoord.s, vTextureCoord.t));
             }else{
                 fragmentColor = vec4(1.0, 1.0, 1.0, 1.0);
             }
@@ -135,13 +136,10 @@
                 <input type="checkbox" id="specular" checked>
                      Show specular
                 </input>
-                <br />
-                 Texture:
-                <select id="texture" checked>
-                     <option value="none">None</option>
-                     <option selected value="galvanized">Galvanized</option>
-                     <option value="earth">Earth</option>
-                </select>
+                <input type="checkbox" id="colormap" checked>
+                    Use Color Map 
+                </input>               
+
                 <br />
                 Material:
                 <input type="number" id="shininess" value="32.0" />

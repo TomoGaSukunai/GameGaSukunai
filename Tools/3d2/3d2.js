@@ -240,15 +240,19 @@ function createProgram(fs_id, vs_id){
     shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix")
     shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix")
     shaderProgram.nMatrixUniform = gl.getUniformLocation(shaderProgram, "uNMatrix")
-    shaderProgram.samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler")
+
+    shaderProgram.colorMapSamplerUniform = gl.getUniformLocation(shaderProgram, "uColorMapSampler")
+    shaderProgram.specularMapSamplerUniform = gl.getUniformLocation(shaderProgram, "uSpecularMapSampler")
+    
     shaderProgram.ambientColorUniform = gl.getUniformLocation(shaderProgram, "uAmbientColor")        
     shaderProgram.pointlightLocationUniform = gl.getUniformLocation(shaderProgram, "uPointLightingLocation")
     shaderProgram.pointlightSpecularColorUniform = gl.getUniformLocation(shaderProgram, "uPointLightingSpecularColor")
     shaderProgram.pointlightDiffuseColorUniform = gl.getUniformLocation(shaderProgram, "uPointLightingDiffuseColor")
+    
     shaderProgram.useLightingUniform = gl.getUniformLocation(shaderProgram, "uUseLighting")
-    shaderProgram.useTexturesUniform = gl.getUniformLocation(shaderProgram, "uUseTextures")
-    shaderProgram.useSpecularHighlightsUniform = gl.getUniformLocation(shaderProgram, "uShowSpecularHighlights")
-    shaderProgram.materialShininessUniform = gl.getUniformLocation(shaderProgram, "uMaterialShininess")
+    shaderProgram.useColorMapUniform = gl.getUniformLocation(shaderProgram, "uUseColorMap")
+    shaderProgram.useSpecularMapUniform = gl.getUniformLocation(shaderProgram, "uUseSpecularMap")
+    
     return shaderProgram;
 }
 
@@ -268,7 +272,7 @@ function getShader(gl, id){
 }
 
 var earthTexture
-var galvanizedTexture
+var specularTexture
 function initTexture(){
 
     earthTexture = gl.createTexture()
@@ -279,13 +283,13 @@ function initTexture(){
     }    
     earthTexture.image.src = "earth.jpg"
 
-    galvanizedTexture = gl.createTexture()
-    galvanizedTexture.image = new Image()
-    galvanizedTexture.image.onload = function(){
-        handleLoadedTexture(galvanizedTexture)
+    specularTexture = gl.createTexture()
+    specularTexture.image = new Image()
+    specularTexture.image.onload = function(){
+        handleLoadedTexture(specularTexture)
         textureReady++ 
     }
-    galvanizedTexture.image.src = "galvanized.jpg"
+    specularTexture.image.src = "specular.gif"
 }
 var textureReady = 0
 
@@ -326,34 +330,72 @@ function degToRad(degrees){
     return degrees * Math.PI / 180.0
 }
 
-var teapotVertexPositionBuffer
-var teapotVertexNormalBuffer
-var teapotVertexTextureCoordBuffer
-var teapotVertexIndexBuffer
-function loadTeapot(teapotData){
-    teapotVertexNormalBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexNormals), gl.STATIC_DRAW)
-    teapotVertexNormalBuffer.itemSize = 3
-    teapotVertexNormalBuffer.numItems = teapotData.vertexNormals.length / 3
+var sphereVertexNormalBuffer
+var sphereVertexPositionBuffer
+var sphereVertexTextureCoordBuffer
+var sphereVertexIndexBuffer
 
-    teapotVertexPositionBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexPositions), gl.STATIC_DRAW)
-    teapotVertexPositionBuffer.itemSize = 3
-    teapotVertexPositionBuffer.numItems = teapotData.vertexPositions.length / 3
+function initBuffer(){
+    var latitudeMesh = 30
+    var longitudeMesh = 30
+    var radius = 10
+    
+    var vertexPositions = []
+    var vertexNormals = []
+    var textureCoords =[]
+    var vertexCount = 0
+    for (var i=0; i<=latitudeMesh; i++){
+        var theta = Math.PI * i / latitudeMesh
+        var ct = Math.cos(theta)
+        var st = Math.sin(theta)
+        for(var j=0; j<=longitudeMesh; j++){
+            var phi = Math.PI * 2 * j / longitudeMesh
+            var cp = Math.cos(phi)
+            var sp = Math.sin(phi)
 
-    teapotVertexTextureCoordBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexTextureCoords), gl.STATIC_DRAW)
-    teapotVertexTextureCoordBuffer.itemSize = 2
-    teapotVertexTextureCoordBuffer.numItems = teapotData.vertexTextureCoords.length / 2
+            var x = st * cp
+            var y = ct           
+            var z = st * sp
+            vertexNormals.push(x, y, z)
+            vertexPositions.push(x*radius, y*radius, z*radius)
+            textureCoords.push(1 - j/longitudeMesh, 1 - i/latitudeMesh)
+            vertexCount ++
+        }
+    }
 
-    teapotVertexIndexBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer)
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(teapotData.indices), gl.STATIC_DRAW)
-    teapotVertexIndexBuffer.itemSize = 1
-    teapotVertexIndexBuffer.numItems = teapotData.indices.length
+    var indices = []
+    for (var i=0; i<latitudeMesh; i++){
+        for (var j=0; j<longitudeMesh; j++){
+            var top = i * (longitudeMesh + 1) + j 
+            var bottom = (i + 1) * (longitudeMesh + 1) + j
+            indices.push(top, bottom, top + 1)
+            indices.push(bottom, bottom + 1, top + 1)
+        }
+    }
+
+    sphereVertexPositionBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexPositions), gl.STATIC_DRAW)
+    sphereVertexPositionBuffer.itemSize = 3
+    sphereVertexPositionBuffer.numItems = vertexCount
+
+    sphereVertexNormalBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexNormals), gl.STATIC_DRAW)
+    sphereVertexNormalBuffer.itemSize = 3 
+    sphereVertexNormalBuffer.numItems = vertexCount
+
+    sphereVertexTextureCoordBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexTextureCoordBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW)
+    sphereVertexTextureCoordBuffer.itemSize = 2
+    sphereVertexTextureCoordBuffer.numItems = vertexCount
+
+    sphereVertexIndexBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereVertexIndexBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW)
+    sphereVertexIndexBuffer.itemSize = 1
+    sphereVertexIndexBuffer.numItems = indices.length
 }
 
 function drawScene(){        
@@ -364,9 +406,11 @@ function drawScene(){
     
     gl.useProgram(currentProgram);
 
-    var specularHighlights = document.getElementById("specular").checked
-    gl.uniform1i(currentProgram.useSpecularHighlightsUniform, specularHighlights)
+    var specular = document.getElementById("specular").checked
+    gl.uniform1i(currentProgram.useSpecularMapUniform, specular)
 
+    var colormap = document.getElementById("colormap").checked
+    gl.uniform1i(currentProgram.useColorMapUniform, colormap)
 
     var lighting = document.getElementById("lighting").checked
     gl.uniform1i(currentProgram.useLightingUniform, lighting)
@@ -407,37 +451,31 @@ function drawScene(){
     mvMatrix.rotate(degToRad(23.4), [1.0, 0.0, -1.0])
     mvMatrix.rotate(degToRad(teapotAngle), [0.0, 1.0, 0.0])
     
-    var texture = document.getElementById("texture").value
-    gl.uniform1i(currentProgram.useTexturesUniform, texture != "none")
-
 
     gl.activeTexture(gl.TEXTURE0)
-    if (texture == "earth"){
-        gl.bindTexture(gl.TEXTURE_2D, earthTexture)
-    }else if (texture == "galvanized"){
-        gl.bindTexture(gl.TEXTURE_2D, galvanizedTexture)
-    }    
-    gl.uniform1i(currentProgram.samplerUniform, 0)
+    gl.bindTexture(gl.TEXTURE_2D, earthTexture)
+    gl.uniform1i(currentProgram.colorMapSamplerUniform, 0)
 
-    gl.uniform1f(currentProgram.materialShininessUniform,
-    parseFloat(document.getElementById("shininess").value))
+    gl.activeTexture(gl.TEXTURE1)
+    gl.bindTexture(gl.TEXTURE_2D, specularTexture)
+    gl.uniform1i(currentProgram.specularMapSamplerUniform, 1)
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexPositionBuffer)
     gl.vertexAttribPointer(currentProgram.vertexPositionAttribute,
-    teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    sphereVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexNormalBuffer)
     gl.vertexAttribPointer(currentProgram.vertexNormalAttribute,
-    teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    sphereVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0)
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer)
+    gl.bindBuffer(gl.ARRAY_BUFFER, sphereVertexTextureCoordBuffer)
     gl.vertexAttribPointer(currentProgram.textureCoordAttribute,
-    teapotVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
+    sphereVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0)
     
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer)
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, sphereVertexIndexBuffer)
     setMatrixUniforms()
 
-    gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0)
+    gl.drawElements(gl.TRIANGLES, sphereVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0)
 }
 
 var mouseDown = false
@@ -503,7 +541,7 @@ function webGLStart(){
     initGL(canvas)
     initShaders()
     initTexture()
-    loadTeapot(require("./teapot.json"))
+    initBuffer()
 
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.enable(gl.DEPTH_TEST)
